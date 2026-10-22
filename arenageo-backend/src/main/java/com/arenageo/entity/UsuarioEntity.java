@@ -18,7 +18,7 @@ public class UsuarioEntity {
     @Column(name = "fl_ativo", nullable = false)
     private Boolean flAtivo = true;
 
-    protected UsuarioEntity() {}
+    public UsuarioEntity() {}
     public Integer getIdUsuario() { return idUsuario; }
     public TipoContaEntity getTipoConta() { return tipoConta; }
     public void setTipoConta(TipoContaEntity tipoConta) { this.tipoConta = tipoConta; }

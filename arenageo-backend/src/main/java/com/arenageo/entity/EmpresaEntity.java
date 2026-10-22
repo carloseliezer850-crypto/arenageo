@@ -26,7 +26,7 @@ public class EmpresaEntity {
     @Column(name = "fl_ativo", nullable = false)
     private Boolean flAtivo = true;
 
-    protected EmpresaEntity() {}
+    public EmpresaEntity() {}
     public Integer getIdEmpresa() { return idEmpresa; }
     public PessoaEntity getPessoaResponsavel() { return pessoaResponsavel; }
     public void setPessoaResponsavel(PessoaEntity pessoaResponsavel) { this.pessoaResponsavel = pessoaResponsavel; }

@@ -29,7 +29,7 @@ public class PessoaEntity {
     @Column(name = "nm_url_foto_perfil", length = 500)
     private String nmUrlFotoPerfil;
 
-    protected PessoaEntity() {}
+    public PessoaEntity() {}
     public Integer getIdPessoa() { return idPessoa; }
     public UsuarioEntity getUsuario() { return usuario; }
     public void setUsuario(UsuarioEntity usuario) { this.usuario = usuario; }

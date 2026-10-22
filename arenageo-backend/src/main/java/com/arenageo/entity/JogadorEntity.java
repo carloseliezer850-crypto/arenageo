@@ -14,7 +14,7 @@ public class JogadorEntity {
     @Column(name = "fl_ativo", nullable = false)
     private Boolean flAtivo = true;
 
-    protected JogadorEntity() {}
+    public JogadorEntity() {}
     public Integer getIdJogador() { return idJogador; }
     public PessoaEntity getPessoa() { return pessoa; }
     public void setPessoa(PessoaEntity pessoa) { this.pessoa = pessoa; }

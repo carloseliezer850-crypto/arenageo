@@ -38,7 +38,7 @@ public class EnderecoEntity {
     @Column(name = "fl_principal", nullable = false)
     private Boolean flPrincipal = false;
 
-    protected EnderecoEntity() {}
+    public EnderecoEntity() {}
     public Integer getIdEndereco() { return idEndereco; }
     public PessoaEntity getPessoa() { return pessoa; }
     public void setPessoa(PessoaEntity pessoa) { this.pessoa = pessoa; }

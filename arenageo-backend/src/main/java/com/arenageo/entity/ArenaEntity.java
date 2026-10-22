@@ -30,7 +30,7 @@ public class ArenaEntity {
     @Column(name = "fl_ativo", nullable = false)
     private Boolean flAtivo = true;
 
-    protected ArenaEntity() {}
+    public ArenaEntity() {}
     public Integer getIdArena() { return idArena; }
     public EmpresaEntity getEmpresa() { return empresa; }
     public void setEmpresa(EmpresaEntity empresa) { this.empresa = empresa; }
