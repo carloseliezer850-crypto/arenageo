@@ -18,7 +18,7 @@ public record CadastroJogadorRequestDto(
         @NotBlank @Email @Size(max = 254) String email,
         @Size(max = 500) String profileImageUrl,
         @Size(max = 20) String phone,
-        @NotBlank(message = "CPF é obrigatório.") @Size(max = 18) String cpf,
+        @NotBlank(message = "CPF é obrigatório.") @Size(max = 18) @Pattern(regexp = "^(?:[0-9]{11}|[0-9]{3}\\\\.[0-9]{3}\\\\.[0-9]{3}-[0-9]{2})$") String cpf,
         @Pattern(regexp = "^$|^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
             message = "Data de nascimento deve estar no formato AAAA-MM-DD.")
         String birthDate,

@@ -1,6 +1,7 @@
 package com.arenageo.service;
 
 import java.util.Locale;
+import java.nio.charset.StandardCharsets;
 import com.arenageo.config.JwtTokenService;
 import com.arenageo.dto.auth.AuthResponseDto;
 import com.arenageo.dto.auth.LoginRequestDto;
@@ -28,6 +29,10 @@ public class AutenticacaoService {
 
     @Transactional(readOnly = true)
     public AuthResponseDto<Void> entrar(LoginRequestDto request) {
+        if (request.password().getBytes(StandardCharsets.UTF_8).length > 72) {
+            throw new CredenciaisInvalidasException();
+        }
+
         String email = request.email().trim().toLowerCase(Locale.ROOT);
         var usuario = usuarioRepository.findByNmEmailIgnoreCase(email)
             .filter(conta -> Boolean.TRUE.equals(conta.getFlAtivo()))
