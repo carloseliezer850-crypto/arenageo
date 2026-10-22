@@ -1,0 +1,27 @@
+name: Backend build
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - "arenageo-backend/**"
+  pull_request:
+    branches: [develop]
+    paths:
+      - "arenageo-backend/**"
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Configure Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Maven verify
+        run: mvn -B verify
+        working-directory: arenageo-backend
