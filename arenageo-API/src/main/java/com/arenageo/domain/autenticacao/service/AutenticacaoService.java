@@ -1,13 +1,13 @@
-package com.arenageo.service;
+package com.arenageo.domain.autenticacao.service;
 
 import java.util.Locale;
 import java.nio.charset.StandardCharsets;
 import com.arenageo.config.JwtTokenService;
-import com.arenageo.dto.auth.AuthResponseDto;
-import com.arenageo.dto.auth.LoginRequestDto;
+import com.arenageo.api.autenticacao.dto.AuthResponseDto;
+import com.arenageo.api.autenticacao.dto.LoginRequestDto;
 import com.arenageo.exception.CredenciaisInvalidasException;
-import com.arenageo.mapper.AutenticacaoMapper;
-import com.arenageo.repository.UsuarioRepository;
+import com.arenageo.api.autenticacao.mapper.AutenticacaoMapper;
+import com.arenageo.domain.usuario.repository.UsuarioRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

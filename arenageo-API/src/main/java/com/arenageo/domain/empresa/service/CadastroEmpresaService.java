@@ -1,17 +1,28 @@
-package com.arenageo.service;
+package com.arenageo.domain.empresa.service;
 
+import com.arenageo.domain.arena.entity.ArenaEntity;
+import com.arenageo.domain.empresa.entity.EmpresaEntity;
+import com.arenageo.domain.pessoa.entity.PessoaEntity;
+import com.arenageo.domain.usuario.entity.TipoContaEntity;
+import com.arenageo.domain.usuario.entity.UsuarioEntity;
+import com.arenageo.domain.arena.repository.ArenaRepository;
+import com.arenageo.domain.empresa.repository.EmpresaRepository;
+import com.arenageo.domain.endereco.repository.EnderecoRepository;
+import com.arenageo.domain.pessoa.repository.PessoaRepository;
+import com.arenageo.domain.usuario.repository.TipoContaRepository;
+import com.arenageo.domain.usuario.repository.UsuarioRepository;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 
 import com.arenageo.config.JwtTokenService;
-import com.arenageo.dto.auth.AuthResponseDto;
-import com.arenageo.dto.cadastro.CadastroEmpresaRequestDto;
-import com.arenageo.dto.cadastro.CadastroResultadoDto;
+import com.arenageo.api.autenticacao.dto.AuthResponseDto;
+import com.arenageo.api.empresa.dto.CadastroEmpresaRequestDto;
+import com.arenageo.api.cadastro.dto.CadastroResultadoDto;
 import com.arenageo.entity.*;
 import com.arenageo.exception.CadastroDuplicadoException;
 import com.arenageo.exception.RegraNegocioException;
-import com.arenageo.mapper.AutenticacaoMapper;
-import com.arenageo.mapper.CadastroMapper;
+import com.arenageo.api.autenticacao.mapper.AutenticacaoMapper;
+import com.arenageo.api.cadastro.mapper.CadastroMapper;
 import com.arenageo.repository.*;
 import com.arenageo.util.DocumentoUtils;
 import org.springframework.security.crypto.password.PasswordEncoder;
