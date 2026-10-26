@@ -2,13 +2,17 @@ name: Backend build
 
 on:
   push:
-    branches: [develop]
+    branches:
+      - develop
+      - "refactor/**"
     paths:
-      - "arenageo-backend/**"
+      - "arenageo-API/**"
+      - ".github/workflows/backend-build.yml"
   pull_request:
     branches: [develop]
     paths:
-      - "arenageo-backend/**"
+      - "arenageo-API/**"
+      - ".github/workflows/backend-build.yml"
 
 jobs:
   verify:
@@ -24,4 +28,4 @@ jobs:
           cache: maven
       - name: Maven verify
         run: mvn -B verify
-        working-directory: arenageo-backend
+        working-directory: arenageo-API
