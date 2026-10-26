@@ -1,8 +1,8 @@
-package com.arenageo.mapper;
+package com.arenageo.api.autenticacao.mapper;
 
-import com.arenageo.dto.auth.AuthResponseDto;
-import com.arenageo.dto.auth.UsuarioAutenticadoDto;
-import com.arenageo.entity.UsuarioEntity;
+import com.arenageo.api.autenticacao.dto.AuthResponseDto;
+import com.arenageo.api.autenticacao.dto.UsuarioAutenticadoDto;
+import com.arenageo.domain.usuario.entity.UsuarioEntity;
 import org.springframework.stereotype.Component;
 
 @Component

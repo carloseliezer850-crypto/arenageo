@@ -1,9 +1,16 @@
-package com.arenageo.mapper;
+package com.arenageo.api.cadastro.mapper;
 
+import com.arenageo.domain.arena.entity.ArenaEntity;
+import com.arenageo.domain.empresa.entity.EmpresaEntity;
+import com.arenageo.domain.endereco.entity.EnderecoEntity;
+import com.arenageo.domain.jogador.entity.JogadorEntity;
+import com.arenageo.domain.pessoa.entity.PessoaEntity;
+import com.arenageo.domain.usuario.entity.TipoContaEntity;
+import com.arenageo.domain.usuario.entity.UsuarioEntity;
 import java.time.LocalDate;
 import java.util.Locale;
-import com.arenageo.dto.cadastro.CadastroEmpresaRequestDto;
-import com.arenageo.dto.cadastro.EnderecoCadastroDto;
+import com.arenageo.api.empresa.dto.CadastroEmpresaRequestDto;
+import com.arenageo.api.cadastro.dto.EnderecoCadastroDto;
 import com.arenageo.entity.*;
 import com.arenageo.util.DocumentoUtils;
 import org.springframework.stereotype.Component;
