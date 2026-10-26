@@ -5,7 +5,7 @@ import java.time.ZoneOffset;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import com.arenageo.dto.erro.ErroApiDto;
+import com.arenageo.api.erro.dto.ErroApiDto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;

@@ -1,4 +1,4 @@
-package com.arenageo.entity;
+package com.arenageo.domain.usuario.entity;
 
 import jakarta.persistence.*;
 
