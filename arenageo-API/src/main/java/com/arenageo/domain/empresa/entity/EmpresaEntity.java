@@ -1,5 +1,6 @@
-package com.arenageo.entity;
+package com.arenageo.domain.empresa.entity;
 
+import com.arenageo.domain.pessoa.entity.PessoaEntity;
 import jakarta.persistence.*;
 
 @Entity

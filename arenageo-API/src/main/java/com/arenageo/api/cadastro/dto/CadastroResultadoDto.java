@@ -1,3 +1,3 @@
-package com.arenageo.dto.cadastro;
+package com.arenageo.api.cadastro.dto;
 
 public record CadastroResultadoDto(Integer idPerfil, String tipoPerfil) {}

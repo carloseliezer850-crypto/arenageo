@@ -1,4 +1,4 @@
-package com.arenageo.dto.cadastro;
+package com.arenageo.api.cadastro.dto;
 
 import java.math.BigDecimal;
 import jakarta.validation.constraints.*;
