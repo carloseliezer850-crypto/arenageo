@@ -1,5 +1,8 @@
-package com.arenageo.entity;
+package com.arenageo.domain.endereco.entity;
 
+import com.arenageo.domain.arena.entity.ArenaEntity;
+import com.arenageo.domain.empresa.entity.EmpresaEntity;
+import com.arenageo.domain.pessoa.entity.PessoaEntity;
 import java.math.BigDecimal;
 import jakarta.persistence.*;
 

@@ -1,5 +1,7 @@
-package com.arenageo.entity;
+package com.arenageo.domain.jogador.entity;
 
+import com.arenageo.domain.catalogo.entity.EsporteEntity;
+import com.arenageo.domain.catalogo.entity.NivelHabilidadeEntity;
 import jakarta.persistence.*;
 
 @Entity

@@ -1,5 +1,6 @@
-package com.arenageo.entity;
+package com.arenageo.domain.pessoa.entity;
 
+import com.arenageo.domain.usuario.entity.UsuarioEntity;
 import java.time.LocalDate;
 import jakarta.persistence.*;
 

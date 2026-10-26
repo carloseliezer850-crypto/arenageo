@@ -1,4 +1,4 @@
-package com.arenageo.entity;
+package com.arenageo.domain.jogador.entity;
 
 import java.io.Serializable;
 import java.util.Objects;
