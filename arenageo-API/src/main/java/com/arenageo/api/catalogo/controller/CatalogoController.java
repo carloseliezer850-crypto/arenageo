@@ -1,9 +1,9 @@
-package com.arenageo.controller;
+package com.arenageo.api.catalogo.controller;
 
 import java.util.List;
-import com.arenageo.dto.catalogo.EsporteResponseDto;
-import com.arenageo.dto.catalogo.NivelHabilidadeResponseDto;
-import com.arenageo.service.CatalogoService;
+import com.arenageo.api.catalogo.dto.EsporteResponseDto;
+import com.arenageo.api.catalogo.dto.NivelHabilidadeResponseDto;
+import com.arenageo.domain.catalogo.service.CatalogoService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 

@@ -1,5 +1,6 @@
-package com.arenageo.dto.cadastro;
+package com.arenageo.api.empresa.dto;
 
+import com.arenageo.api.cadastro.dto.EnderecoCadastroDto;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 

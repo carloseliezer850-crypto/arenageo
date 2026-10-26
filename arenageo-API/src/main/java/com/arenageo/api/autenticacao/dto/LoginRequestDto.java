@@ -1,4 +1,4 @@
-package com.arenageo.dto.auth;
+package com.arenageo.api.autenticacao.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;

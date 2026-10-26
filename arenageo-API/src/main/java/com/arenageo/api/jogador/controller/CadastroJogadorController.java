@@ -1,9 +1,9 @@
-package com.arenageo.controller;
+package com.arenageo.api.jogador.controller;
 
-import com.arenageo.dto.auth.AuthResponseDto;
-import com.arenageo.dto.cadastro.CadastroJogadorRequestDto;
-import com.arenageo.dto.cadastro.CadastroResultadoDto;
-import com.arenageo.service.CadastroJogadorService;
+import com.arenageo.api.autenticacao.dto.AuthResponseDto;
+import com.arenageo.api.jogador.dto.CadastroJogadorRequestDto;
+import com.arenageo.api.cadastro.dto.CadastroResultadoDto;
+import com.arenageo.domain.jogador.service.CadastroJogadorService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

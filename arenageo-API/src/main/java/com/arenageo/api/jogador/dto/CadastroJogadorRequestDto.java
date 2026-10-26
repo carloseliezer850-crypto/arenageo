@@ -1,5 +1,6 @@
-package com.arenageo.dto.cadastro;
+package com.arenageo.api.jogador.dto;
 
+import com.arenageo.api.cadastro.dto.EnderecoCadastroDto;
 import java.util.List;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
