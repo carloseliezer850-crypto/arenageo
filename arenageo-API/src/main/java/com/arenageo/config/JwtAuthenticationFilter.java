@@ -3,7 +3,7 @@ package com.arenageo.config;
 import java.io.IOException;
 import java.util.List;
 
-import com.arenageo.entity.UsuarioEntity;
+import com.arenageo.domain.usuario.entity.UsuarioEntity;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;

@@ -1,8 +1,8 @@
-package com.arenageo.controller;
+package com.arenageo.api.autenticacao.controller;
 
-import com.arenageo.dto.auth.AuthResponseDto;
-import com.arenageo.dto.auth.LoginRequestDto;
-import com.arenageo.service.AutenticacaoService;
+import com.arenageo.api.autenticacao.dto.AuthResponseDto;
+import com.arenageo.api.autenticacao.dto.LoginRequestDto;
+import com.arenageo.domain.autenticacao.service.AutenticacaoService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

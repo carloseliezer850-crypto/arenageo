@@ -1,9 +1,9 @@
-package com.arenageo.controller;
+package com.arenageo.api.empresa.controller;
 
-import com.arenageo.dto.auth.AuthResponseDto;
-import com.arenageo.dto.cadastro.CadastroEmpresaRequestDto;
-import com.arenageo.dto.cadastro.CadastroResultadoDto;
-import com.arenageo.service.CadastroEmpresaService;
+import com.arenageo.api.autenticacao.dto.AuthResponseDto;
+import com.arenageo.api.empresa.dto.CadastroEmpresaRequestDto;
+import com.arenageo.api.cadastro.dto.CadastroResultadoDto;
+import com.arenageo.domain.empresa.service.CadastroEmpresaService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

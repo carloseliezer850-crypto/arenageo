@@ -6,7 +6,7 @@ import java.util.Date;
 
 import javax.crypto.SecretKey;
 
-import com.arenageo.entity.UsuarioEntity;
+import com.arenageo.domain.usuario.entity.UsuarioEntity;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
