@@ -1,10 +1,10 @@
-package com.arenageo.service;
+package com.arenageo.domain.catalogo.service;
 
 import java.util.List;
-import com.arenageo.dto.catalogo.EsporteResponseDto;
-import com.arenageo.dto.catalogo.NivelHabilidadeResponseDto;
-import com.arenageo.repository.EsporteRepository;
-import com.arenageo.repository.NivelHabilidadeRepository;
+import com.arenageo.api.catalogo.dto.EsporteResponseDto;
+import com.arenageo.api.catalogo.dto.NivelHabilidadeResponseDto;
+import com.arenageo.domain.catalogo.repository.EsporteRepository;
+import com.arenageo.domain.catalogo.repository.NivelHabilidadeRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
