@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { cadastrarJogador } from "@/services/servicoAutenticacao";
 import type { RegisterPlayerRequest } from "@/types/autenticacao";
@@ -26,8 +27,10 @@ const initialState: RegisterPlayerRequest = {
 };
 
 export function FormularioCadastroJogador() {
+  const router = useRouter();
   const [form, setForm] = useState<RegisterPlayerRequest>(initialState);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [confirmacao, setConfirmacao] = useState("");
   const [message, setMessage] = useState("");
   const [photoPreview, setPhotoPreview] = useState("");
 
@@ -68,6 +71,10 @@ export function FormularioCadastroJogador() {
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (confirmacao !== form.user.password) {
+      setMessage("As senhas informadas precisam coincidir.");
+      return;
+    }
 
     if (!validate()) {
       setMessage("Preencha os campos obrigatórios antes de continuar.");
@@ -76,6 +83,10 @@ export function FormularioCadastroJogador() {
 
     try {
       const result = await cadastrarJogador(form);
+      if (result.success) {
+        router.replace("/painel");
+        return;
+      }
       setMessage(result.message);
     } catch {
       setMessage("Não foi possível conectar ao servidor. Tente novamente mais tarde.");
@@ -146,7 +157,7 @@ export function FormularioCadastroJogador() {
 
           <label className="field">
             <span>Confirmar senha</span>
-            <input type="password" />
+            <input type="password" value={confirmacao} onChange={event => setConfirmacao(event.target.value)} />
           </label>
         </div>
       </div>

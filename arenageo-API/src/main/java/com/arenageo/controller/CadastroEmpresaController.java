@@ -18,6 +18,13 @@ public class CadastroEmpresaController {
         this.cadastroEmpresaService = cadastroEmpresaService;
     }
 
+    @PostMapping("/minha-conta")
+    @ResponseStatus(HttpStatus.CREATED)
+    public CadastroResultadoDto cadastrarNaConta(java.security.Principal principal,
+            @Valid @RequestBody CadastroEmpresaRequestDto.EmpresaDaContaDto request) {
+        return cadastroEmpresaService.cadastrarNaConta(Integer.valueOf(principal.getName()), request);
+    }
+
     @PostMapping
     public ResponseEntity<AuthResponseDto<CadastroResultadoDto>> cadastrar(
             @Valid @RequestBody CadastroEmpresaRequestDto request) {

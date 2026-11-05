@@ -2,6 +2,8 @@ package com.arenageo.entity;
 
 import java.time.LocalDate;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "tb_pessoa")
@@ -22,6 +24,7 @@ public class PessoaEntity {
     private LocalDate dtNascimento;
     @Column(name = "nm_nacionalidade", nullable = false, length = 80)
     private String nmNacionalidade = "Brasileira";
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "nm_genero", columnDefinition = "char(1)", length = 1)
     private String nmGenero;
     @Column(name = "nm_telefone", length = 20)

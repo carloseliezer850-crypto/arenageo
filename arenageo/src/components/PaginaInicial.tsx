@@ -13,7 +13,7 @@ import { obterNiveisHabilidade } from "@/services/servicoNivelHabilidade";
 import { obterEsportes } from "@/services/servicoEsporte";
 
 export default async function PaginaInicial() {
-  const [sports, matches, players, skillLevels] = await Promise.all([
+  const [sports, matches, players, skillLevels] = await Promise.allSettled([
     obterEsportes(),
     obterPartidas(),
     obterJogadores(),
@@ -28,9 +28,13 @@ export default async function PaginaInicial() {
         <Hero />
 
         <div className="container">
-          <CategoriasEsportivas sports={sports} />
-          <ListaPartidas matches={matches} sports={sports} skillLevels={skillLevels} />
-          <ListaJogadores players={players} skillLevels={skillLevels} />
+          {sports.status === "fulfilled" && <CategoriasEsportivas sports={sports.value} />}
+          {matches.status === "fulfilled" && sports.status === "fulfilled" && skillLevels.status === "fulfilled" && (
+            <ListaPartidas matches={matches.value} sports={sports.value} skillLevels={skillLevels.value} />
+          )}
+          {players.status === "fulfilled" && skillLevels.status === "fulfilled" && (
+            <ListaJogadores players={players.value} skillLevels={skillLevels.value} />
+          )}
           <CriarPartida />
           <ComoFunciona />
         </div>

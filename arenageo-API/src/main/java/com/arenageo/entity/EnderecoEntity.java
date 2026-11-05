@@ -2,6 +2,8 @@ package com.arenageo.entity;
 
 import java.math.BigDecimal;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "tb_endereco")
@@ -19,6 +21,7 @@ public class EnderecoEntity {
     private String nmTipoEndereco;
     @Column(name = "nm_cep", length = 8)
     private String nmCep;
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "nm_uf", columnDefinition = "char(2)", length = 2)
     private String nmUf;
     @Column(name = "nm_cidade", nullable = false, length = 120)

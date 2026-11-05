@@ -1,5 +1,8 @@
 import Link from "next/link";
 
+import { obterToken } from "@/services/sessao";
+import { sair } from "@/services/servicoAutenticacao";
+
 const navigation = [
   { label: "Encontrar partidas", href: "/partidas" },
   { label: "Encontrar jogadores", href: "/jogadores" },
@@ -7,7 +10,8 @@ const navigation = [
   { label: "Criar partida", href: "/criar-partida" },
 ];
 
-export function Cabecalho() {
+export async function Cabecalho() {
+  const conectado = Boolean(await obterToken());
   return (
     <header className="site-header">
       <div className="container header-inner">
@@ -30,8 +34,13 @@ export function Cabecalho() {
         </nav>
 
         <div className="header-actions">
-          <Link href="/entrar" className="text-button">Entrar</Link>
-          <Link href="/cadastro" className="primary-button small">Criar conta</Link>
+          {conectado ? <>
+            <Link href="/painel" className="text-button">Meu painel</Link>
+            <form action={sair}><button className="text-button">Sair</button></form>
+          </> : <>
+            <Link href="/entrar" className="text-button">Entrar</Link>
+            <Link href="/cadastro" className="primary-button small">Criar conta</Link>
+          </>}
         </div>
       </div>
     </header>

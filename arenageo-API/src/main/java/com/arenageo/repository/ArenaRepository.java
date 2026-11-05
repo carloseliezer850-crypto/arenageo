@@ -3,4 +3,19 @@ package com.arenageo.repository;
 import com.arenageo.entity.ArenaEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface ArenaRepository extends JpaRepository<ArenaEntity, Integer> {}
+import com.arenageo.dto.catalogo.ArenaResumoDto;
+import java.util.List;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+public interface ArenaRepository extends JpaRepository<ArenaEntity, Integer> {
+    @Query("""
+        select new com.arenageo.dto.catalogo.ArenaResumoDto(a.idArena, a.nmNome, a.dsDescricao,
+            e.nmCidade, e.nmUf, e.nmLogradouro, e.nmNumero, a.dsHorarioFuncionamento)
+        from EnderecoEntity e join e.arena a
+        where e.flPrincipal = true and a.flAtivo = true and a.empresa.flAtivo = true
+          and lower(e.nmCidade) = lower(:cidade)
+        order by a.nmNome, a.idArena
+        """)
+    List<ArenaResumoDto> buscarPorCidade(@Param("cidade") String cidade);
+}

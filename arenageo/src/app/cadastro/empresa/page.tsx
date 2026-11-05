@@ -3,15 +3,20 @@ import { Rodape } from "@/components/Rodape";
 import { PaginaRota } from "@/components/PaginaRota";
 import { FormularioCadastroEmpresa } from "@/components/FormularioCadastroEmpresa";
 
-export default function RegisterBusinessPage() {
+import { obterToken } from "@/services/sessao";
+import Link from "next/link";
+
+export default async function RegisterBusinessPage() {
+  const contaExistente = Boolean(await obterToken());
   return (
     <div className="app-shell">
       <Cabecalho />
       <PaginaRota
         title="Cadastro de arena / comerciante"
-        description="Cadastre sua empresa, sua arena e seus espaços esportivos."
+        description="Cadastre a empresa e a arena que você administra."
       >
-        <FormularioCadastroEmpresa />
+        {!contaExistente && <p>Já joga no ArenaGeo? <Link href="/entrar">Entre com sua conta</Link> para cadastrar a arena.</p>}
+        <FormularioCadastroEmpresa contaExistente={contaExistente} />
       </PaginaRota>
       <Rodape />
     </div>

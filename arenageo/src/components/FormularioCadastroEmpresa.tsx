@@ -1,7 +1,8 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { cadastrarEmpresa } from "@/services/servicoAutenticacao";
+import { cadastrarEmpresa, cadastrarEmpresaNaConta } from "@/services/servicoAutenticacao";
 import type { RegisterBusinessRequest } from "@/types/autenticacao";
 
 const initialState: RegisterBusinessRequest = {
@@ -43,14 +44,26 @@ const initialState: RegisterBusinessRequest = {
   },
 };
 
-export function FormularioCadastroEmpresa() {
+export function FormularioCadastroEmpresa({ contaExistente }: { contaExistente: boolean }) {
+  const router = useRouter();
   const [form, setForm] = useState<RegisterBusinessRequest>(initialState);
+  const [confirmacao, setConfirmacao] = useState("");
   const [message, setMessage] = useState("");
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (!contaExistente && confirmacao !== form.responsible.password) {
+      setMessage("As senhas informadas precisam coincidir.");
+      return;
+    }
     try {
-      const result = await cadastrarEmpresa(form);
+      const result = contaExistente
+        ? await cadastrarEmpresaNaConta({ company: form.company, address: form.address, arena: form.arena })
+        : await cadastrarEmpresa(form);
+      if (result.success) {
+        router.replace("/painel?cidade=" + encodeURIComponent(form.address.city));
+        return;
+      }
       setMessage(result.message);
     } catch {
       setMessage("Não foi possível conectar ao servidor. Tente novamente mais tarde.");
@@ -59,7 +72,7 @@ export function FormularioCadastroEmpresa() {
 
   return (
     <form className="form-card" onSubmit={handleSubmit} noValidate>
-      <div className="form-section">
+      {!contaExistente && <div className="form-section">
         <h3 className="section-title">Responsável</h3>
         <div className="form-grid two-columns">
           <label className="field">
@@ -89,10 +102,10 @@ export function FormularioCadastroEmpresa() {
 
           <label className="field">
             <span>Confirmar senha</span>
-            <input type="password" />
+            <input type="password" value={confirmacao} onChange={event => setConfirmacao(event.target.value)} />
           </label>
         </div>
-      </div>
+      </div>}
 
       <div className="form-section">
         <h3 className="section-title">Empresa</h3>
@@ -210,7 +223,7 @@ export function FormularioCadastroEmpresa() {
       </div>
 
       <div className="action-row">
-        <button type="submit" className="primary-button">Criar conta comercial</button>
+        <button type="submit" className="primary-button">{contaExistente ? "Cadastrar arena na minha conta" : "Criar conta comercial"}</button>
       </div>
 
       {message ? <p className="success-message">{message}</p> : null}

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { LoginRequest } from "@/types/autenticacao";
 import { entrar } from "@/services/servicoAutenticacao";
@@ -11,6 +12,7 @@ const initialState: LoginRequest = {
 };
 
 export function FormularioLogin() {
+  const router = useRouter();
   const [form, setForm] = useState<LoginRequest>(initialState);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState("");
@@ -41,6 +43,10 @@ export function FormularioLogin() {
 
     try {
       const result = await entrar(form);
+      if (result.success) {
+        router.replace("/painel");
+        return;
+      }
       setMessage(result.message);
     } catch {
       setMessage("Não foi possível conectar ao servidor. Tente novamente mais tarde.");

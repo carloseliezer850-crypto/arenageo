@@ -6,6 +6,8 @@ import java.util.Locale;
 import com.arenageo.config.JwtTokenService;
 import com.arenageo.dto.auth.AuthResponseDto;
 import com.arenageo.dto.cadastro.CadastroEmpresaRequestDto;
+import com.arenageo.dto.cadastro.CadastroEmpresaRequestDto.EmpresaDaContaDto;
+import com.arenageo.exception.CredenciaisInvalidasException;
 import com.arenageo.dto.cadastro.CadastroResultadoDto;
 import com.arenageo.entity.*;
 import com.arenageo.exception.CadastroDuplicadoException;
@@ -53,21 +55,13 @@ public class CadastroEmpresaService {
     public AuthResponseDto<CadastroResultadoDto> cadastrar(CadastroEmpresaRequestDto request) {
         String emailResponsavel = request.responsible().email().trim().toLowerCase(Locale.ROOT);
         String cpf = DocumentoUtils.somenteDigitos(request.responsible().cpf());
-        String cnpj = DocumentoUtils.somenteDigitos(request.company().cnpj());
-        String emailComercial = request.company().businessEmail().trim().toLowerCase(Locale.ROOT);
         validarSenha(request.responsible().password());
 
         if (!DocumentoUtils.cpfValido(cpf)) throw new RegraNegocioException("CPF do responsável informado é inválido.");
-        if (!DocumentoUtils.cnpjValido(cnpj)) throw new RegraNegocioException("CNPJ informado é inválido.");
         if (usuarioRepository.existsByNmEmailIgnoreCase(emailResponsavel))
             throw new CadastroDuplicadoException("Este e-mail do responsável já está cadastrado.");
         if (pessoaRepository.existsByNmCpf(cpf))
             throw new CadastroDuplicadoException("Este CPF já está cadastrado.");
-        if (empresaRepository.existsByNmCnpj(cnpj))
-            throw new CadastroDuplicadoException("Este CNPJ já está cadastrado.");
-        if (empresaRepository.existsByNmEmailComercialIgnoreCase(emailComercial))
-            throw new CadastroDuplicadoException("Este e-mail comercial já está cadastrado.");
-
         TipoContaEntity tipoConta = tipoContaRepository.findByNmCodigoAndFlAtivoTrue("EMPRESA")
             .orElseThrow(() -> new RegraNegocioException("Tipo de conta EMPRESA não foi configurado no banco."));
 
@@ -79,6 +73,30 @@ public class CadastroEmpresaService {
             cpf, null, request.responsible().phone(), null, null);
         pessoaRepository.save(pessoaResponsavel);
 
+        CadastroResultadoDto resultado = salvarEmpresa(pessoaResponsavel,
+            new EmpresaDaContaDto(request.company(), request.address(), request.arena()));
+        String token = jwtTokenService.gerarToken(usuario, false);
+        return autenticacaoMapper.respostaSucesso(usuario,
+            "Cadastro comercial realizado com sucesso.", resultado, token);
+    }
+
+    @Transactional
+    public CadastroResultadoDto cadastrarNaConta(Integer idUsuario, EmpresaDaContaDto request) {
+        PessoaEntity responsavel = pessoaRepository
+            .findByUsuario_IdUsuarioAndUsuario_FlAtivoTrueAndUsuario_TipoConta_FlAtivoTrue(idUsuario)
+            .orElseThrow(CredenciaisInvalidasException::new);
+        return salvarEmpresa(responsavel, request);
+    }
+
+    private CadastroResultadoDto salvarEmpresa(PessoaEntity pessoaResponsavel, EmpresaDaContaDto request) {
+        String cnpj = DocumentoUtils.somenteDigitos(request.company().cnpj());
+        String emailComercial = request.company().businessEmail().trim().toLowerCase(Locale.ROOT);
+        if (!DocumentoUtils.cnpjValido(cnpj)) throw new RegraNegocioException("CNPJ informado é inválido.");
+        if (empresaRepository.existsByNmCnpj(cnpj))
+            throw new CadastroDuplicadoException("Este CNPJ já está cadastrado.");
+        if (empresaRepository.existsByNmEmailComercialIgnoreCase(emailComercial))
+            throw new CadastroDuplicadoException("Este e-mail comercial já está cadastrado.");
+
         EmpresaEntity empresa = cadastroMapper.criarEmpresa(pessoaResponsavel, request.company(), cnpj);
         empresaRepository.save(empresa);
         enderecoRepository.save(cadastroMapper.criarEnderecoEmpresa(empresa, request.address(), "COMERCIAL"));
@@ -87,10 +105,7 @@ public class CadastroEmpresaService {
         arenaRepository.save(arena);
         enderecoRepository.save(cadastroMapper.criarEnderecoArena(arena, request.address(), "ARENA"));
 
-        String token = jwtTokenService.gerarToken(usuario, false);
-        CadastroResultadoDto resultado = new CadastroResultadoDto(empresa.getIdEmpresa(), "EMPRESA");
-        return autenticacaoMapper.respostaSucesso(usuario,
-            "Cadastro comercial realizado com sucesso.", resultado, token);
+        return new CadastroResultadoDto(empresa.getIdEmpresa(), "EMPRESA");
     }
 
     private void validarSenha(String senha) {

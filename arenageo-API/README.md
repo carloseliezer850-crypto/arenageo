@@ -64,3 +64,15 @@ mvn -B verify
 ```
 
 O workflow `.github/workflows/backend-build.yml` executa a verificação do backend em alterações direcionadas a `develop`.
+
+### Testar o fluxo de arenas
+
+Com as três migrações aplicadas e a API e o frontend em execução:
+
+1. Cadastre um jogador em `/cadastro/jogador`. O cadastro abre o painel da conta.
+2. No painel, escolha **Cadastrar minha empresa e arena**. Informe um CNPJ de teste válido e a cidade **Bagé**. A pessoa autenticada será a responsável pela empresa.
+3. Envie o formulário e confira a arena na busca por Bagé. Saia da conta e entre com o mesmo e-mail e senha de jogador.
+4. Entre com outro jogador e busque **Bagé**. A arena deve aparecer também para ele. Busque outra cidade para conferir o filtro.
+5. Para testar uma empresa nova, saia da conta e acesse `/cadastro/empresa`. Esse caminho inclui os dados do responsável.
+
+O cadastro em conta existente usa `POST /empresas/minha-conta` e a listagem usa `GET /arenas?cidade=Bagé`. Ambos recebem o JWT pelo cabeçalho Bearer. A interface mantém o token em um cookie HttpOnly e chama a API pelo servidor Next.js.

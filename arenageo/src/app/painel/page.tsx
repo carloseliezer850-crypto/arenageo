@@ -1,33 +1,53 @@
+import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Cabecalho } from "@/components/Cabecalho";
 import { Rodape } from "@/components/Rodape";
 import { PaginaRota } from "@/components/PaginaRota";
+import { buscarArenas, type ArenaResumo } from "@/services/servicoArena";
+import { obterToken } from "@/services/sessao";
+import { ErroApi } from "@/api/cliente";
 
-export default function DashboardPage() {
+export default async function DashboardPage({ searchParams }: {
+  searchParams: Promise<{ cidade?: string | string[] }>
+}) {
+  const token = await obterToken();
+  if (!token) redirect("/entrar");
+  const filtro = (await searchParams).cidade;
+  const cidade = typeof filtro === "string" ? filtro.trim() : "";
+  let arenas: ArenaResumo[] = [];
+  let erro = false;
+  if (cidade) {
+    try {
+      arenas = await buscarArenas(cidade, token);
+    } catch (error) {
+      if (error instanceof ErroApi && [401, 403].includes(error.status)) redirect("/entrar");
+      erro = true;
+    }
+  }
+
   return (
     <div className="app-shell">
       <Cabecalho />
-      <PaginaRota title="Dashboard" description="Painel do jogador para acompanhar partidas e perfil.">
+      <PaginaRota title="Encontrar arenas">
+        <form action="/painel" className="form-card">
+          <label className="field">Cidade
+            <input name="cidade" defaultValue={cidade} placeholder="Bagé" required maxLength={120} />
+          </label>
+          <button className="primary-button">Buscar arenas</button>
+        </form>
+        {erro && <p role="alert">Não foi possível consultar as arenas. Tente novamente.</p>}
+        {cidade && !erro && arenas.length === 0 && <p>Nenhuma arena encontrada em {cidade}.</p>}
         <div className="dashboard-grid">
-          <article className="info-card">
-            <h2>Próximas partidas</h2>
-            <p>Lista das partidas confirmadas e próximas.</p>
-          </article>
-          <article className="info-card">
-            <h2>Partidas criadas</h2>
-            <p>Controle das partidas que você organizou.</p>
-          </article>
-          <article className="info-card">
-            <h2>Convites</h2>
-            <p>Solicitações e convites recebidos.</p>
-          </article>
-          <article className="info-card">
-            <h2>Histórico</h2>
-            <p>Jogos anteriores, avaliações e desempenho.</p>
-          </article>
+          {arenas.map(arena => <article className="info-card" key={arena.id}>
+            <h2>{arena.name}</h2>
+            <p>{[arena.street, arena.number, arena.city, arena.state].filter(Boolean).join(", ")}</p>
+            {arena.description && <p>{arena.description}</p>}
+            {arena.openingHours && <p>Horário de funcionamento: {arena.openingHours}</p>}
+          </article>)}
         </div>
+        <Link className="text-button" href="/cadastro/empresa">Cadastrar minha empresa e arena</Link>
       </PaginaRota>
       <Rodape />
     </div>
   );
 }
-

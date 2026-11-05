@@ -25,7 +25,8 @@ export async function requisitarApi<T>(url: string, options: OpcoesRequisicaoApi
   });
 
   if (!response.ok) {
-    const message = await response.text();
+    const detalhe = await response.json().catch(() => null);
+    const message = detalhe?.message;
     throw new ErroApi(response.status, message || `Request failed with status ${response.status}`);
   }
 
