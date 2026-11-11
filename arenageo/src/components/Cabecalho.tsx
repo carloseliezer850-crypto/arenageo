@@ -6,6 +6,7 @@ import { sair } from "@/services/servicoAutenticacao";
 const navigation = [
   { label: "Encontrar partidas", href: "/partidas" },
   { label: "Encontrar jogadores", href: "/jogadores" },
+  { label: "Quadro Tático", href: "/quadro-tatico" },
   { label: "Como funciona", href: "/como-funciona" },
   { label: "Criar partida", href: "/criar-partida" },
 ];
@@ -32,6 +33,8 @@ export async function Cabecalho() {
             </Link>
           ))}
         </nav>
+
+        <Link href="/quadro-tatico" className="tactical-mobile-link">Quadro Tático</Link>
 
         <div className="header-actions">
           {conectado ? <>
