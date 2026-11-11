@@ -33,6 +33,7 @@ export function FormularioLogin() {
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (isSubmitting) return;
     if (!validate()) {
       setMessage("Não foi possível entrar. Verifique seu e-mail e senha.");
       return;
@@ -104,7 +105,7 @@ export function FormularioLogin() {
               <input type="checkbox" checked={Boolean(form.rememberMe)} onChange={(event) => setForm({ ...form, rememberMe: event.target.checked })} />
               Lembrar-me
             </label>
-            <a href="/cadastro" className="text-link">Esqueci minha senha</a>
+            <span className="text-link">Recuperação de senha ainda indisponível</span>
           </div>
 
           <button type="submit" className="primary-button auth-button" disabled={isSubmitting}>
@@ -117,7 +118,7 @@ export function FormularioLogin() {
 
           <a href="/cadastro" className="secondary-button button-link auth-button secondary-auth-button">Criar conta</a>
 
-          {message ? <p className="message-box">{message}</p> : null}
+          {message ? <p role="alert" className="message-box">{message}</p> : null}
         </form>
       </div>
     </div>

@@ -5,7 +5,7 @@ import jakarta.validation.constraints.*;
 
 public record EnderecoCadastroDto(
     @Pattern(regexp = "^[0-9]{5}-?[0-9]{3}$|^$", message = "CEP deve conter 8 dígitos.") String zipCode,
-    @Pattern(regexp = "^[A-Za-z]{2}$|^$", message = "Estado deve conter a sigla de 2 letras.") String state,
+    @NotBlank(message = "Selecione o estado.") @Pattern(regexp = "^(AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)$", message = "Selecione uma UF brasileira válida.") String state,
     @NotBlank(message = "Cidade é obrigatória.") @Size(max = 120) String city,
     @Size(max = 120) String neighborhood,
     @Size(max = 160) String street,
