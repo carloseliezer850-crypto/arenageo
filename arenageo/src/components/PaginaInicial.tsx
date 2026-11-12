@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Cabecalho } from "@/components/Cabecalho";
 import { Hero } from "@/components/Destaque";
 import { ListaPartidas } from "@/components/ListaPartidas";
@@ -34,6 +35,15 @@ export default async function PaginaInicial() {
           )}
           {players.status === "fulfilled" && skillLevels.status === "fulfilled" && (
             <ListaJogadores players={players.value} skillLevels={skillLevels.value} />
+          )}
+          {(sports.status === "rejected" || skillLevels.status === "rejected") && (
+            <p role="alert">Não foi possível carregar os catálogos. <Link href="/">Tentar novamente</Link></p>
+          )}
+          {matches.status === "rejected" && (
+            <section aria-label="Partidas indisponíveis"><h2>Partidas</h2><p role="alert">A consulta de partidas está indisponível. <Link href="/">Tentar novamente</Link></p></section>
+          )}
+          {players.status === "rejected" && (
+            <section aria-label="Jogadores indisponíveis"><h2>Jogadores</h2><p role="alert">A consulta de jogadores está indisponível. <Link href="/">Tentar novamente</Link></p></section>
           )}
           <CriarPartida />
           <ComoFunciona />

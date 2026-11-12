@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Player } from "@/types/jogador";
 import type { SkillLevel } from "@/types/nivelHabilidade";
 
@@ -15,11 +16,10 @@ export function CartaoJogador({ player, skillLevel }: CartaoJogadorProps) {
         <p>{player.city} - {player.state}</p>
         <div className="player-meta">
           <span>{skillLevel.name}</span>
-          <span>2,4 km</span>
         </div>
-        <button type="button" className="secondary-button player-button">
+        <Link href={`/jogadores/${player.id}`} className="secondary-button player-button">
           Ver perfil
-        </button>
+        </Link>
       </div>
     </article>
   );

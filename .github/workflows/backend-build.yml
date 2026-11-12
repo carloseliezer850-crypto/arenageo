@@ -30,6 +30,8 @@ jobs:
         working-directory: arenageo
       - run: npx tsc --noEmit && npm run lint && npm run build
         working-directory: arenageo
+      - run: node --test tests/quadro-tatico.test.mjs
+        working-directory: arenageo
       - run: npx playwright install --with-deps chromium
         working-directory: arenageo
       - name: Start disposable E2E API
