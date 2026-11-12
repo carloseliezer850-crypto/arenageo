@@ -11,6 +11,10 @@ export interface AuthUser {
 }
 
 export interface AuthResponse<T = unknown> {
+  fields?: Record<string, string>;
+  code?: string;
+  status?: number;
+  traceId?: string;
   success: boolean;
   message: string;
   user?: AuthUser;
@@ -44,6 +48,7 @@ export interface RegisterPlayerRequest {
 }
 
 export interface RegisterBusinessRequest {
+  arenaAddress?: RegisterBusinessRequest["address"];
   responsible: {
     name: string;
     cpf: string;
@@ -95,4 +100,3 @@ export interface CriarPartidaRequest {
   city: string;
   visibility: "public" | "private";
 }
-

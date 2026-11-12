@@ -119,7 +119,7 @@ export function FormularioLogin() {
           <a href="/cadastro" className="secondary-button button-link auth-button secondary-auth-button">Criar conta</a>
 
           {message ? <p role="alert" className="message-box">{message}</p> : null}
-        </form>
+        <a href="/conta">Esqueci minha senha</a></form>
       </div>
     </div>
   );

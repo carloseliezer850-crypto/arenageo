@@ -5,3 +5,5 @@
 **/.env.*
 !**/.env.example
 **/*.iml
+
+/supabase/.temp/

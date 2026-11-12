@@ -1,261 +1,346 @@
 "use client";
-
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { cadastrarEmpresa, cadastrarEmpresaNaConta } from "@/services/servicoAutenticacao";
+import {
+  cadastrarEmpresa,
+  cadastrarEmpresaNaConta,
+} from "@/services/servicoAutenticacao";
+import {
+  empresaVazia,
+  validarEmpresa,
+  formatarDocumento,
+  type Erros,
+} from "@/lib/cadastro";
+import { Campo, EnderecoCampos, SenhaInfo, focarErro } from "./CamposCadastro";
+import { useToast } from "./ToastProvider";
 import type { RegisterBusinessRequest } from "@/types/autenticacao";
-
-const formatarCpf = (value: string) => value.replace(/\D/g, "").slice(0, 11)
-  .replace(/^(\d{3})(\d)/, "$1.$2").replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
-  .replace(/(\d{3})\.(\d{3})\.(\d{3})(\d)/, "$1.$2.$3-$4");
-
-const initialState: RegisterBusinessRequest = {
-  responsible: {
-    name: "",
-    cpf: "",
-    email: "",
-    phone: "",
-    password: "",
-  },
-  company: {
-    legalName: "",
-    tradeName: "",
-    cnpj: "",
-    stateRegistration: "",
-    businessPhone: "",
-    businessEmail: "",
-  },
-  address: {
-    zipCode: "",
-    state: "",
-    city: "",
-    neighborhood: "",
-    street: "",
-    number: "",
-    complement: "",
-    latitude: null,
-    longitude: null,
-  },
-  arena: {
-    name: "",
-    description: "",
-    imageUrl: "",
-    phone: "",
-    email: "",
-    website: "",
-    instagram: "",
-    openingHours: "",
-  },
-};
-
-export function FormularioCadastroEmpresa({ contaExistente }: { contaExistente: boolean }) {
-  const router = useRouter();
-  const [form, setForm] = useState<RegisterBusinessRequest>(initialState);
+const fields = {
+  responsible: [
+    ["name", "Nome", "text", true],
+    ["cpf", "CPF", "text", true],
+    ["email", "E-mail", "email", true],
+    ["phone", "Telefone", "tel", true],
+    ["password", "Senha", "password", true],
+  ],
+  company: [
+    ["legalName", "Razão social", "text", true],
+    ["tradeName", "Nome fantasia", "text", true],
+    ["cnpj", "CNPJ", "text", true],
+    ["stateRegistration", "Inscrição estadual (ou ISENTO)", "text", false],
+    ["businessPhone", "Telefone comercial", "tel", true],
+    ["businessEmail", "E-mail comercial", "email", true],
+  ],
+  arena: [
+    ["name", "Nome da arena", "text", true],
+    ["phone", "Telefone da arena", "tel", true],
+    ["email", "E-mail da arena", "email", true],
+    ["website", "Website", "url", false],
+    ["instagram", "Instagram", "text", false],
+    ["openingHours", "Horário de funcionamento", "text", false],
+  ],
+} as const;
+export function FormularioCadastroEmpresa({
+  contaExistente,
+}: {
+  contaExistente: boolean;
+}) {
+  const [form, setForm] = useState(empresaVazia);
   const [confirmacao, setConfirmacao] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState<Erros>({});
+  const [step, setStep] = useState(contaExistente ? 1 : 0);
+  const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
-
-  const handleSubmit = async (event: React.FormEvent) => {
+  const lock = useRef(false);
+  const requestKey = useRef<string | undefined>(undefined);
+  const toast = useToast();
+  const router = useRouter();
+  function update(next: RegisterBusinessRequest) {
+    setForm(next);
+    if (Object.keys(errors).length)
+      setErrors(validarEmpresa(next, confirmacao, contaExistente));
+  }
+  function show(e: Erros) {
+    setErrors(e);
+    const key = Object.keys(e)[0] ?? "";
+    setStep(
+      key.startsWith("responsible") || key === "confirmacao"
+        ? 0
+        : key.startsWith("company") || key.startsWith("address")
+          ? 1
+          : 2,
+    );
+    focarErro(e);
+  }
+  async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (isSubmitting) return;
-    const cpf = form.responsible.cpf.replace(/\D/g, "");
-    const cpfValido = (value: string) => {
-      if (!/^\d{11}$/.test(value) || /^(\d)\1{10}$/.test(value)) return false;
-      return [9, 10].every((length) => {
-        const sum = value.slice(0, length).split("").reduce((total, digit, index) => total + Number(digit) * (length + 1 - index), 0);
-        const remainder = (sum * 10) % 11;
-        return Number(value[length]) === (remainder === 10 ? 0 : remainder);
-      });
-    };
-    if (!contaExistente && !cpfValido(cpf)) {
-      setMessage("Informe um CPF válido, incluindo os dígitos verificadores.");
+    if (lock.current) return;
+    const e = validarEmpresa(form, confirmacao, contaExistente);
+    if (Object.keys(e).length) {
+      show(e);
+      toast("Revise os campos destacados.");
       return;
     }
-    if (form.address.zipCode && !/^\d{5}-?\d{3}$/.test(form.address.zipCode)) {
-      setMessage("Informe um CEP com 8 dígitos.");
-      return;
-    }
-
-    if (!contaExistente && confirmacao !== form.responsible.password) {
-      setMessage("As senhas informadas precisam coincidir.");
-      return;
-    }
-    setIsSubmitting(true);
+    lock.current = true;
+    requestKey.current ??= crypto.randomUUID();
+    setBusy(true);
     setMessage("");
     try {
+      const data = {
+        ...form,
+        responsible: {
+          ...form.responsible,
+          email: form.responsible.email.trim(),
+        },
+        company: {
+          ...form.company,
+          businessEmail: form.company.businessEmail.trim(),
+        },
+        arena: { ...form.arena, email: form.arena.email.trim() },
+      };
       const result = contaExistente
-        ? await cadastrarEmpresaNaConta({ company: form.company, address: form.address, arena: form.arena })
-        : await cadastrarEmpresa(form);
+        ? await cadastrarEmpresaNaConta(
+            {
+              company: data.company,
+              address: data.address,
+              arena: data.arena,
+              arenaAddress: data.arenaAddress,
+            },
+            requestKey.current,
+          )
+        : await cadastrarEmpresa(data, requestKey.current);
       if (result.success) {
-        router.replace("/painel?cidade=" + encodeURIComponent(form.address.city));
-        return;
+        toast(result.message);
+        router.replace("/gestao");
+      } else {
+        if (result.status && result.status < 500)
+          requestKey.current = undefined;
+        if (result.fields && Object.keys(result.fields).length)
+          show(result.fields);
+        setMessage(result.message);
+        toast(result.message);
       }
-      setMessage(result.message);
     } catch {
-      setMessage("Não foi possível conectar ao servidor. Tente novamente mais tarde.");
+      setMessage(
+        "Não foi possível confirmar o cadastro. Verifique sua conta antes de tentar novamente.",
+      );
+      toast("Não foi possível confirmar o cadastro.");
     } finally {
-      setIsSubmitting(false);
+      lock.current = false;
+      setBusy(false);
     }
-  };
-
+  }
+  function group(group: keyof typeof fields) {
+    return (
+      <div className="form-grid two-columns">
+        {fields[group].map(([key, label, type, required]) => (
+          <Campo
+            key={key}
+            name={group + "." + key}
+            label={label}
+            type={type}
+            required={required}
+            autoComplete={
+              type === "password"
+                ? "new-password"
+                : type === "email"
+                  ? "email"
+                  : undefined
+            }
+            value={String(
+              (form[group] as unknown as Record<string, string>)[key] ?? "",
+            )}
+            error={errors[group + "." + key]}
+            onChange={(e) =>
+              update({
+                ...form,
+                [group]: {
+                  ...form[group],
+                  [key]:
+                    key === "cpf"
+                      ? formatarDocumento(e.target.value)
+                      : key === "cnpj"
+                        ? formatarDocumento(e.target.value, true)
+                        : e.target.value,
+                },
+              })
+            }
+          />
+        ))}
+      </div>
+    );
+  }
   return (
-    <form className="form-card" onSubmit={handleSubmit}>
-      {!contaExistente && <div className="form-section">
-        <h3 className="section-title">Responsável</h3>
-        <div className="form-grid two-columns">
-          <label className="field">
-            <span>Nome completo</span>
-            <input required value={form.responsible.name} onChange={(event) => setForm({ ...form, responsible: { ...form.responsible, name: event.target.value } })} />
-          </label>
-
-          <label className="field">
-            <span>CPF</span>
-            <input inputMode="numeric" maxLength={14} value={formatarCpf(form.responsible.cpf)} onChange={(event) => setForm({ ...form, responsible: { ...form.responsible, cpf: formatarCpf(event.target.value) } })} />
-          </label>
-
-          <label className="field">
-            <span>E-mail</span>
-            <input type="email" required value={form.responsible.email} onChange={(event) => setForm({ ...form, responsible: { ...form.responsible, email: event.target.value } })} />
-          </label>
-
-          <label className="field">
-            <span>Telefone</span>
-            <input required value={form.responsible.phone} onChange={(event) => setForm({ ...form, responsible: { ...form.responsible, phone: event.target.value } })} />
-          </label>
-
-          <label className="field">
-            <span>Senha</span>
-            <input type="password" required minLength={8} maxLength={72} value={form.responsible.password} onChange={(event) => setForm({ ...form, responsible: { ...form.responsible, password: event.target.value } })} />
-          </label>
-
-          <label className="field">
-            <span>Confirmar senha</span>
-            <input type="password" required minLength={8} maxLength={72} value={confirmacao} onChange={event => setConfirmacao(event.target.value)} />
-          </label>
-        </div>
-      </div>}
-
-      <div className="form-section">
-        <h3 className="section-title">Empresa</h3>
-        <div className="form-grid two-columns">
-          <label className="field">
-            <span>Razão social</span>
-            <input required value={form.company.legalName} onChange={(event) => setForm({ ...form, company: { ...form.company, legalName: event.target.value } })} />
-          </label>
-
-          <label className="field">
-            <span>Nome fantasia</span>
-            <input required value={form.company.tradeName} onChange={(event) => setForm({ ...form, company: { ...form.company, tradeName: event.target.value } })} />
-          </label>
-
-          <label className="field">
-            <span>CNPJ</span>
-            <input required value={form.company.cnpj} onChange={(event) => setForm({ ...form, company: { ...form.company, cnpj: event.target.value } })} />
-          </label>
-
-          <label className="field">
-            <span>Inscrição estadual</span>
-            <input value={form.company.stateRegistration ?? ""} onChange={(event) => setForm({ ...form, company: { ...form.company, stateRegistration: event.target.value } })} />
-          </label>
-
-          <label className="field">
-            <span>Telefone comercial</span>
-            <input required value={form.company.businessPhone} onChange={(event) => setForm({ ...form, company: { ...form.company, businessPhone: event.target.value } })} />
-          </label>
-
-          <label className="field">
-            <span>E-mail comercial</span>
-            <input type="email" required value={form.company.businessEmail} onChange={(event) => setForm({ ...form, company: { ...form.company, businessEmail: event.target.value } })} />
-          </label>
-        </div>
-      </div>
-
-      <div className="form-section">
-        <h3 className="section-title">Endereço</h3>
-        <div className="form-grid two-columns">
-          <label className="field">
-            <span>CEP</span>
-            <input value={form.address.zipCode} onChange={(event) => setForm({ ...form, address: { ...form.address, zipCode: event.target.value } })} />
-          </label>
-
-          <label className="field">
-            <span>Estado</span>
-            <select required value={form.address.state} onChange={(event) => setForm({ ...form, address: { ...form.address, state: event.target.value } })}><option value="">Selecione o estado</option><option value="AC">Acre (AC)</option><option value="AL">Alagoas (AL)</option><option value="AP">Amapá (AP)</option><option value="AM">Amazonas (AM)</option><option value="BA">Bahia (BA)</option><option value="CE">Ceará (CE)</option><option value="DF">Distrito Federal (DF)</option><option value="ES">Espírito Santo (ES)</option><option value="GO">Goiás (GO)</option><option value="MA">Maranhão (MA)</option><option value="MT">Mato Grosso (MT)</option><option value="MS">Mato Grosso do Sul (MS)</option><option value="MG">Minas Gerais (MG)</option><option value="PA">Pará (PA)</option><option value="PB">Paraíba (PB)</option><option value="PR">Paraná (PR)</option><option value="PE">Pernambuco (PE)</option><option value="PI">Piauí (PI)</option><option value="RJ">Rio de Janeiro (RJ)</option><option value="RN">Rio Grande do Norte (RN)</option><option value="RS">Rio Grande do Sul (RS)</option><option value="RO">Rondônia (RO)</option><option value="RR">Roraima (RR)</option><option value="SC">Santa Catarina (SC)</option><option value="SP">São Paulo (SP)</option><option value="SE">Sergipe (SE)</option><option value="TO">Tocantins (TO)</option></select>
-          </label>
-
-          <label className="field">
-            <span>Cidade</span>
-            <input required value={form.address.city} onChange={(event) => setForm({ ...form, address: { ...form.address, city: event.target.value } })} />
-          </label>
-
-          <label className="field">
-            <span>Bairro</span>
-            <input value={form.address.neighborhood} onChange={(event) => setForm({ ...form, address: { ...form.address, neighborhood: event.target.value } })} />
-          </label>
-
-          <label className="field">
-            <span>Rua</span>
-            <input value={form.address.street} onChange={(event) => setForm({ ...form, address: { ...form.address, street: event.target.value } })} />
-          </label>
-
-          <label className="field">
-            <span>Número</span>
-            <input value={form.address.number} onChange={(event) => setForm({ ...form, address: { ...form.address, number: event.target.value } })} />
-          </label>
-
-          <label className="field full-width">
-            <span>Complemento</span>
-            <input value={form.address.complement ?? ""} onChange={(event) => setForm({ ...form, address: { ...form.address, complement: event.target.value } })} />
-          </label>
-        </div>
-      </div>
-
-      <div className="form-section">
-        <h3 className="section-title">Arena</h3>
-        <div className="form-grid two-columns">
-          <label className="field">
-            <span>Nome da arena</span>
-            <input required value={form.arena.name} onChange={(event) => setForm({ ...form, arena: { ...form.arena, name: event.target.value } })} />
-          </label>
-
-          <label className="field">
-            <span>Telefone comercial</span>
-            <input required value={form.arena.phone} onChange={(event) => setForm({ ...form, arena: { ...form.arena, phone: event.target.value } })} />
-          </label>
-
-          <label className="field">
-            <span>E-mail comercial</span>
-            <input type="email" required value={form.arena.email} onChange={(event) => setForm({ ...form, arena: { ...form.arena, email: event.target.value } })} />
-          </label>
-
-          <label className="field">
-            <span>Instagram</span>
-            <input value={form.arena.instagram ?? ""} onChange={(event) => setForm({ ...form, arena: { ...form.arena, instagram: event.target.value } })} />
-          </label>
-
-          <label className="field">
-            <span>Website</span>
-            <input value={form.arena.website ?? ""} onChange={(event) => setForm({ ...form, arena: { ...form.arena, website: event.target.value } })} />
-          </label>
-
-          <label className="field">
-            <span>Horário de funcionamento</span>
-            <input value={form.arena.openingHours} onChange={(event) => setForm({ ...form, arena: { ...form.arena, openingHours: event.target.value } })} />
-          </label>
-
-          <label className="field full-width">
-            <span>Descrição</span>
-            <textarea rows={4} value={form.arena.description} onChange={(event) => setForm({ ...form, arena: { ...form.arena, description: event.target.value } })} />
-          </label>
-        </div>
-      </div>
-
+    <form
+      className="form-card"
+      noValidate
+      onSubmit={submit}
+      onBlur={(event) => {
+        const name =
+          event.target instanceof HTMLInputElement ||
+          event.target instanceof HTMLSelectElement ||
+          event.target instanceof HTMLTextAreaElement
+            ? event.target.name
+            : "";
+        if (name) {
+          const e = validarEmpresa(form, confirmacao, contaExistente);
+          setErrors((prev) => {
+            const next = { ...prev };
+            delete next[name];
+            if (e[name]) next[name] = e[name];
+            return next;
+          });
+        }
+      }}
+    >
+      <nav className="cadastro-steps" aria-label="Etapas do cadastro">
+        {["Responsável", "Empresa", "Arena", "Revisão"].map(
+          (label, i) =>
+            (!contaExistente || i > 0) && (
+              <button
+                key={label}
+                type="button"
+                aria-current={step === i ? "step" : undefined}
+                onClick={() => setStep(i)}
+              >
+                {label}
+              </button>
+            ),
+        )}
+      </nav>
+      <p>
+        * Campos obrigatórios. Endereços da empresa e da arena podem ser
+        diferentes.
+      </p>
+      {!contaExistente && (
+        <section hidden={step !== 0}>
+          <h3>Responsável</h3>
+          {group("responsible")}
+          <Campo
+            name="confirmacao"
+            label="Confirmar senha"
+            type="password"
+            required
+            autoComplete="new-password"
+            value={confirmacao}
+            error={errors.confirmacao}
+            onChange={(e) => setConfirmacao(e.target.value)}
+          />
+          <SenhaInfo value={form.responsible.password} />
+        </section>
+      )}
+      <section hidden={step !== 1}>
+        <h3>Empresa</h3>
+        {group("company")}
+        <h3>Endereço da empresa</h3>
+        <EnderecoCampos
+          onFill={(patch) =>
+            setForm((prev) => ({
+              ...prev,
+              address: { ...prev.address, ...patch },
+            }))
+          }
+          comercial
+          value={form.address}
+          errors={errors}
+          onChange={(key, value) =>
+            update({ ...form, address: { ...form.address, [key]: value } })
+          }
+        />
+      </section>
+      <section hidden={step !== 2}>
+        <h3>Arena</h3>
+        {group("arena")}
+        <label className="field">
+          Descrição (opcional)
+          <textarea
+            name="arena.description"
+            id="arena.description"
+            maxLength={10000}
+            value={form.arena.description}
+            onChange={(e) =>
+              update({
+                ...form,
+                arena: { ...form.arena, description: e.target.value },
+              })
+            }
+          />
+          <small>{errors["arena.description"]}</small>
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={!form.arenaAddress}
+            onChange={(e) =>
+              update({
+                ...form,
+                arenaAddress: e.target.checked
+                  ? undefined
+                  : { ...form.address },
+              })
+            }
+          />{" "}
+          Usar o mesmo endereço da empresa
+        </label>
+        {form.arenaAddress && (
+          <EnderecoCampos
+            onFill={(patch) =>
+              setForm((prev) => ({
+                ...prev,
+                arenaAddress: { ...prev.arenaAddress!, ...patch },
+              }))
+            }
+            prefix="arenaAddress"
+            comercial
+            value={form.arenaAddress}
+            errors={errors}
+            onChange={(key, value) =>
+              update({
+                ...form,
+                arenaAddress: { ...form.arenaAddress!, [key]: value },
+              })
+            }
+          />
+        )}
+      </section>
+      <section hidden={step !== 3}>
+        <h3>Revise seu cadastro</h3>
+        <p>Empresa: {form.company.tradeName}</p>
+        <p>Arena: {form.arena.name}</p>
+        <p>
+          Localização: {(form.arenaAddress ?? form.address).city} /{" "}
+          {(form.arenaAddress ?? form.address).state}
+        </p>
+        <p>
+          {contaExistente
+            ? "Seu perfil de jogador e esportes serão preservados."
+            : "A conta do responsável será criada junto com a empresa e arena."}
+        </p>
+      </section>
+      {message && (
+        <p role="alert" className="message-box">
+          {message}
+        </p>
+      )}
       <div className="action-row">
-        <button type="submit" disabled={isSubmitting} className="primary-button">{contaExistente ? "Cadastrar arena na minha conta" : "Criar conta comercial"}</button>
+        {step > (contaExistente ? 1 : 0) && (
+          <button type="button" onClick={() => setStep(step - 1)}>
+            Voltar
+          </button>
+        )}
+        {step < 3 ? (
+          <button
+            type="button"
+            className="primary-button"
+            onClick={() => setStep(step + 1)}
+          >
+            Continuar
+          </button>
+        ) : (
+          <button type="submit" disabled={busy} className="primary-button">
+            {busy ? "Salvando arena…" : "Salvar cadastro"}
+          </button>
+        )}
       </div>
-
-      {message ? <p role="alert" aria-live="assertive" className="message-box">{message}</p> : null}
     </form>
   );
 }
-

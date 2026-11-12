@@ -12,8 +12,8 @@ export interface ArenaResumo {
   openingHours: string;
 }
 
-export async function buscarArenas(cidade: string, token: string) {
-  return requisitarApi<ArenaResumo[]>(rotasApi.arenas + "?" + new URLSearchParams({ cidade }), {
+export async function buscarArenas(cidade: string, token: string, uf?: string) {
+  return requisitarApi<ArenaResumo[]>(rotasApi.arenas + "?" + new URLSearchParams({ cidade, ...(uf ? { uf } : {}) }), {
     headers: { Authorization: "Bearer " + token },
   });
 }

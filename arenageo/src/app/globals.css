@@ -1609,3 +1609,5 @@ h3 {
   }
 }
 
+
+.cadastro-toast:has(span){position:fixed;bottom:24px;right:24px;max-width:min(440px,calc(100vw - 48px));padding:20px;background:#123b2e;color:white;border-radius:12px;box-shadow:0 8px 30px #0003;z-index:100;display:flex;gap:20px}.cadastro-toast button{font-size:24px}.field-error{color:#a71919}.field-hint{font-size:.9rem;color:#45534d}.field [aria-invalid=true]{border:2px solid #a71919}.sport-row{display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:12px 0}.cadastro-steps{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px}.cadastro-steps button{padding:8px 12px;border:1px solid #9aa;border-radius:8px}.cadastro-steps [aria-current=step]{background:#123b2e;color:white}

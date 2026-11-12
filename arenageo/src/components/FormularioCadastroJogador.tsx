@@ -1,243 +1,269 @@
 "use client";
-
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
 import { cadastrarJogador } from "@/services/servicoAutenticacao";
+import {
+  jogadorVazio,
+  validarJogador,
+  formatarDocumento,
+  type Erros,
+} from "@/lib/cadastro";
+import { Campo, EnderecoCampos, SenhaInfo, focarErro } from "./CamposCadastro";
+import { EsportesCadastro } from "./EsportesCadastro";
+import { useToast } from "./ToastProvider";
 import type { RegisterPlayerRequest } from "@/types/autenticacao";
-
-const formatarCpf = (value: string) => value.replace(/\D/g, "").slice(0, 11)
-  .replace(/^(\d{3})(\d)/, "$1.$2").replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
-  .replace(/(\d{3})\.(\d{3})\.(\d{3})(\d)/, "$1.$2.$3-$4");
-
-const initialState: RegisterPlayerRequest = {
-  user: {
-    name: "",
-    username: "",
-    email: "",
-    phone: "",
-    cpf: "",
-    birthDate: "",
-    password: "",
-  },
-  address: {
-    zipCode: "",
-    state: "",
-    city: "",
-    neighborhood: "",
-    latitude: null,
-    longitude: null,
-  },
-  sports: [],
-};
-
 export function FormularioCadastroJogador() {
-  const router = useRouter();
-  const [form, setForm] = useState<RegisterPlayerRequest>(initialState);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [form, setForm] = useState(jogadorVazio);
   const [confirmacao, setConfirmacao] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState<Erros>({});
+  const [step, setStep] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [ready, setReady] = useState(false);
   const [message, setMessage] = useState("");
-  const [photoPreview, setPhotoPreview] = useState("");
-
-  useEffect(() => {
-    return () => {
-      if (photoPreview) URL.revokeObjectURL(photoPreview);
-    };
-  }, [photoPreview]);
-
-  const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      setMessage("Selecione um arquivo de imagem válido.");
-      event.target.value = "";
-      return;
-    }
-
-    if (photoPreview) URL.revokeObjectURL(photoPreview);
-    setPhotoPreview(URL.createObjectURL(file));
-    setMessage("");
-  };
-
-  const validate = () => {
-    const nextErrors: Record<string, string> = {};
-
-    if (!form.user.name.trim()) nextErrors.name = "Nome obrigatório.";
-    if (!form.user.email.trim()) nextErrors.email = "E-mail obrigatório.";
-    if (!form.user.password) nextErrors.password = "Senha obrigatória.";
-    if (!form.user.cpf.trim()) nextErrors.cpf = "CPF obrigatório.";
-    if (!form.address.city.trim()) nextErrors.city = "Cidade obrigatória.";
-    if (!form.user.username.trim()) nextErrors.username = "Nome de usuário obrigatório.";
-
-    setErrors(nextErrors);
-    return Object.keys(nextErrors).length === 0;
-  };
-
-  const handleSubmit = async (event: React.FormEvent) => {
+  const lock = useRef(false);
+  const requestKey = useRef<string | undefined>(undefined);
+  const toast = useToast();
+  const router = useRouter();
+  function update(next: RegisterPlayerRequest) {
+    setForm(next);
+    if (Object.keys(errors).length)
+      setErrors(validarJogador(next, confirmacao));
+  }
+  function user(key: keyof RegisterPlayerRequest["user"], value: string) {
+    update({ ...form, user: { ...form.user, [key]: value } });
+  }
+  function show(e: Erros) {
+    setErrors(e);
+    const key = Object.keys(e)[0];
+    setStep(
+      key === "sports" || key?.startsWith("sports[")
+        ? 3
+        : key?.startsWith("address.")
+          ? 2
+          : ["user.name", "user.cpf", "user.phone", "user.birthDate"].includes(
+                key,
+              )
+            ? 1
+            : 0,
+    );
+    focarErro(e);
+  }
+  async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (isSubmitting) return;
-    const cpf = form.user.cpf.replace(/\D/g, "");
-    const cpfValido = (value: string) => {
-      if (!/^\d{11}$/.test(value) || /^(\d)\1{10}$/.test(value)) return false;
-      return [9, 10].every((length) => {
-        const sum = value.slice(0, length).split("").reduce((total, digit, index) => total + Number(digit) * (length + 1 - index), 0);
-        const remainder = (sum * 10) % 11;
-        return Number(value[length]) === (remainder === 10 ? 0 : remainder);
-      });
-    };
-    if (!cpfValido(cpf)) {
-      setMessage("Informe um CPF válido, incluindo os dígitos verificadores.");
+    if (lock.current) return;
+    const e = validarJogador(form, confirmacao);
+    if (Object.keys(e).length) {
+      show(e);
+      toast("Revise os campos destacados.");
       return;
     }
-    if (form.address.zipCode && !/^\d{5}-?\d{3}$/.test(form.address.zipCode)) {
-      setMessage("Informe um CEP com 8 dígitos.");
+    if (!ready) {
+      setStep(3);
+      toast("Aguarde o carregamento dos esportes e níveis.");
       return;
     }
-
-    if (confirmacao !== form.user.password) {
-      setMessage("As senhas informadas precisam coincidir.");
-      return;
-    }
-
-    if (!validate()) {
-      setMessage("Preencha os campos obrigatórios antes de continuar.");
-      return;
-    }
-
-    setIsSubmitting(true);
+    lock.current = true;
+    requestKey.current ??= crypto.randomUUID();
+    setBusy(true);
     setMessage("");
     try {
-      const result = await cadastrarJogador(form);
+      const result = await cadastrarJogador(
+        {
+          ...form,
+          user: {
+            ...form.user,
+            email: form.user.email.trim(),
+            username: form.user.username.trim(),
+          },
+        },
+        requestKey.current,
+      );
       if (result.success) {
+        toast(result.message);
         router.replace("/painel");
-        return;
+      } else {
+        if (result.status && result.status < 500)
+          requestKey.current = undefined;
+        if (result.fields && Object.keys(result.fields).length)
+          show(result.fields);
+        setMessage(
+          result.message +
+            (result.traceId ? " Protocolo: " + result.traceId : ""),
+        );
+        toast(result.message);
       }
-      setMessage(result.message);
     } catch {
-      setMessage("Não foi possível conectar ao servidor. Tente novamente mais tarde.");
+      setMessage(
+        "Não foi possível confirmar o resultado. Confira sua conta antes de tentar novamente.",
+      );
+      toast("Não foi possível confirmar o cadastro.");
     } finally {
-      setIsSubmitting(false);
+      lock.current = false;
+      setBusy(false);
     }
-  };
-
+  }
+  const input = (
+    key: keyof RegisterPlayerRequest["user"],
+    label: string,
+    type = "text",
+    required = true,
+  ) => (
+    <Campo
+      name={"user." + key}
+      label={label}
+      type={type}
+      required={required}
+      autoComplete={
+        key === "password"
+          ? "new-password"
+          : key === "email"
+            ? "email"
+            : key === "username"
+              ? "username"
+              : key === "name"
+                ? "name"
+                : undefined
+      }
+      value={form.user[key] ?? ""}
+      error={errors["user." + key]}
+      onChange={(e) =>
+        user(
+          key,
+          key === "cpf" ? formatarDocumento(e.target.value) : e.target.value,
+        )
+      }
+    />
+  );
   return (
-    <form className="form-card" onSubmit={handleSubmit}>
-      <div className="form-section">
-        <h3 className="section-title">Seus dados</h3>
-        <div className="profile-photo-field">
-          <div className="profile-photo-preview" aria-hidden="true">
-            {photoPreview ? <img src={photoPreview} alt="" /> : <span>Foto</span>}
-          </div>
-          <div>
-            <label className="field">
-              <span>Foto de perfil</span>
-              <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handlePhotoChange} />
-            </label>
-            <small>JPG, PNG ou WebP. A foto poderá ser enviada ao backend posteriormente.</small>
-          </div>
-        </div>
+    <form
+      className="form-card"
+      noValidate
+      onSubmit={submit}
+      onBlur={(event) => {
+        const name =
+          event.target instanceof HTMLInputElement ||
+          event.target instanceof HTMLSelectElement ||
+          event.target instanceof HTMLTextAreaElement
+            ? event.target.name
+            : "";
+        if (name) {
+          const e = validarJogador(form, confirmacao);
+          setErrors((prev) => {
+            const next = { ...prev };
+            delete next[name];
+            if (e[name]) next[name] = e[name];
+            return next;
+          });
+        }
+      }}
+    >
+      <nav className="cadastro-steps" aria-label="Etapas do cadastro">
+        {["Conta", "Dados pessoais", "Localização", "Esportes"].map(
+          (name, i) => (
+            <button
+              key={name}
+              type="button"
+              aria-current={step === i ? "step" : undefined}
+              onClick={() => setStep(i)}
+            >
+              {i + 1}. {name}
+            </button>
+          ),
+        )}
+      </nav>
+      <p>* Campos obrigatórios. Seus dados permanecem preenchidos ao voltar.</p>
+      <section hidden={step !== 0}>
+        <h3>Sua conta</h3>
         <div className="form-grid two-columns">
-          <label className="field">
-            <span>Nome completo</span>
-            <input required value={form.user.name} onChange={(event) => setForm({ ...form, user: { ...form.user, name: event.target.value } })} />
-            {errors.name ? <small>{errors.name}</small> : null}
-          </label>
-
-          <label className="field">
-            <span>Nome de usuário</span>
-            <input required value={form.user.username} onChange={(event) => setForm({ ...form, user: { ...form.user, username: event.target.value } })} />
-            {errors.username ? <small>{errors.username}</small> : null}
-          </label>
-
-          <label className="field">
-            <span>E-mail</span>
-            <input type="email" required value={form.user.email} onChange={(event) => setForm({ ...form, user: { ...form.user, email: event.target.value } })} />
-            {errors.email ? <small>{errors.email}</small> : null}
-          </label>
-
-          <label className="field">
-            <span>Telefone</span>
-            <input value={form.user.phone} onChange={(event) => setForm({ ...form, user: { ...form.user, phone: event.target.value } })} />
-          </label>
-
-          <label className="field">
-            <span>CPF</span>
-            <input inputMode="numeric" maxLength={14} value={formatarCpf(form.user.cpf)} onChange={(event) => setForm({ ...form, user: { ...form.user, cpf: formatarCpf(event.target.value) } })} />
-            {errors.cpf ? <small>{errors.cpf}</small> : null}
-          </label>
-
-          <label className="field">
-            <span>Data de nascimento</span>
-            <input type="date" value={form.user.birthDate} onChange={(event) => setForm({ ...form, user: { ...form.user, birthDate: event.target.value } })} />
-          </label>
+          {input("username", "Nome de usuário")}
+          {input("email", "E-mail", "email")}
+          {input("password", "Senha", "password")}
+          <Campo
+            label="Confirmar senha"
+            name="confirmacao"
+            required
+            type="password"
+            autoComplete="new-password"
+            value={confirmacao}
+            error={errors.confirmacao}
+            onChange={(e) => {
+              setConfirmacao(e.target.value);
+              if (errors.confirmacao)
+                setErrors({
+                  ...errors,
+                  confirmacao:
+                    e.target.value === form.user.password
+                      ? ""
+                      : "As senhas não coincidem.",
+                });
+            }}
+          />
         </div>
-      </div>
-
-      <div className="form-section">
-        <h3 className="section-title">Sua conta</h3>
+        <SenhaInfo value={form.user.password} />
+      </section>
+      <section hidden={step !== 1}>
+        <h3>Dados pessoais</h3>
         <div className="form-grid two-columns">
-          <label className="field">
-            <span>Senha</span>
-            <input type="password" required minLength={8} maxLength={72} value={form.user.password} onChange={(event) => setForm({ ...form, user: { ...form.user, password: event.target.value } })} />
-            {errors.password ? <small>{errors.password}</small> : null}
-          </label>
-
-          <label className="field">
-            <span>Confirmar senha</span>
-            <input type="password" required minLength={8} maxLength={72} value={confirmacao} onChange={event => setConfirmacao(event.target.value)} />
-          </label>
+          {input("name", "Nome")}
+          {input("cpf", "CPF")}
+          {input("phone", "Telefone", "tel", false)}
+          {input("birthDate", "Nascimento", "date", false)}
         </div>
-      </div>
-
-      <div className="form-section">
-        <h3 className="section-title">Onde você joga</h3>
-        <div className="form-grid two-columns">
-          <label className="field">
-            <span>CEP</span>
-            <input value={form.address.zipCode} onChange={(event) => setForm({ ...form, address: { ...form.address, zipCode: event.target.value } })} />
-          </label>
-
-          <label className="field">
-            <span>Estado</span>
-            <select required value={form.address.state} onChange={(event) => setForm({ ...form, address: { ...form.address, state: event.target.value } })}><option value="">Selecione o estado</option><option value="AC">Acre (AC)</option><option value="AL">Alagoas (AL)</option><option value="AP">Amapá (AP)</option><option value="AM">Amazonas (AM)</option><option value="BA">Bahia (BA)</option><option value="CE">Ceará (CE)</option><option value="DF">Distrito Federal (DF)</option><option value="ES">Espírito Santo (ES)</option><option value="GO">Goiás (GO)</option><option value="MA">Maranhão (MA)</option><option value="MT">Mato Grosso (MT)</option><option value="MS">Mato Grosso do Sul (MS)</option><option value="MG">Minas Gerais (MG)</option><option value="PA">Pará (PA)</option><option value="PB">Paraíba (PB)</option><option value="PR">Paraná (PR)</option><option value="PE">Pernambuco (PE)</option><option value="PI">Piauí (PI)</option><option value="RJ">Rio de Janeiro (RJ)</option><option value="RN">Rio Grande do Norte (RN)</option><option value="RS">Rio Grande do Sul (RS)</option><option value="RO">Rondônia (RO)</option><option value="RR">Roraima (RR)</option><option value="SC">Santa Catarina (SC)</option><option value="SP">São Paulo (SP)</option><option value="SE">Sergipe (SE)</option><option value="TO">Tocantins (TO)</option></select>
-          </label>
-
-          <label className="field">
-            <span>Cidade</span>
-            <input required value={form.address.city} onChange={(event) => setForm({ ...form, address: { ...form.address, city: event.target.value } })} />
-            {errors.city ? <small>{errors.city}</small> : null}
-          </label>
-
-          <label className="field">
-            <span>Bairro</span>
-            <input value={form.address.neighborhood} onChange={(event) => setForm({ ...form, address: { ...form.address, neighborhood: event.target.value } })} />
-          </label>
-        </div>
-      </div>
-
-      <div className="form-section">
-        <h3 className="section-title">Seus esportes</h3>
-        <div className="sport-selection">
-          <div className="checkbox-grid">
-            <label><input type="checkbox" /> Futebol</label>
-            <label><input type="checkbox" /> Futsal</label>
-            <label><input type="checkbox" /> Beach Tennis</label>
-            <label><input type="checkbox" /> Tênis</label>
-            <label><input type="checkbox" /> Vôlei</label>
-          </div>
-          <div className="inline-actions justify-start">
-            <button type="button" className="secondary-button">+ Adicionar outro esporte</button>
-          </div>
-        </div>
-      </div>
-
+        <p>Você poderá completar a foto de perfil após criar a conta.</p>
+      </section>
+      <section hidden={step !== 2}>
+        <h3>Onde você joga</h3>
+        <EnderecoCampos
+          onFill={(patch) =>
+            setForm((prev) => ({
+              ...prev,
+              address: { ...prev.address, ...patch },
+            }))
+          }
+          value={form.address}
+          errors={errors}
+          onChange={(key, value) =>
+            update({ ...form, address: { ...form.address, [key]: value } })
+          }
+        />
+      </section>
+      <section hidden={step !== 3}>
+        <EsportesCadastro
+          value={form.sports}
+          errors={errors}
+          onReady={setReady}
+          onChange={(sports) => update({ ...form, sports })}
+        />
+      </section>
+      {message && (
+        <p role="alert" className="message-box">
+          {message}
+        </p>
+      )}
       <div className="action-row">
-        <button type="submit" disabled={isSubmitting} className="primary-button">Criar conta</button>
+        {step > 0 && (
+          <button type="button" onClick={() => setStep(step - 1)}>
+            Voltar
+          </button>
+        )}
+        {step < 3 ? (
+          <button
+            type="button"
+            className="primary-button"
+            onClick={() => setStep(step + 1)}
+          >
+            Continuar
+          </button>
+        ) : (
+          <button
+            type="submit"
+            className="primary-button"
+            disabled={busy || !ready}
+          >
+            {busy ? "Criando conta…" : "Criar conta"}
+          </button>
+        )}
       </div>
-
-      {message ? <p role="alert" aria-live="assertive" className="message-box">{message}</p> : null}
     </form>
   );
 }
-
