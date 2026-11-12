@@ -26,8 +26,16 @@ export async function requisitarApi<T>(url: string, options: OpcoesRequisicaoApi
 
   if (!response.ok) {
     const detalhe = await response.json().catch(() => null);
-    const message = detalhe?.message;
-    throw new ErroApi(response.status, message || `Request failed with status ${response.status}`);
+    const fields = detalhe?.fields;
+    const details = fields && typeof fields === "object"
+      ? Object.entries(fields).map(([field, message]) => field + ": " + String(message)).join("; ")
+      : "";
+    const fallback = response.status === 401 ? "E-mail ou senha inválidos. Entre novamente."
+      : response.status === 403 ? "Acesso não autorizado. Entre novamente na sua conta."
+      : response.status >= 500 ? "Não foi possível concluir a operação. Tente novamente mais tarde."
+      : "Não foi possível concluir a solicitação.";
+    const message = [detalhe?.message || fallback, details].filter(Boolean).join(" ");
+    throw new ErroApi(response.status, message);
   }
 
   if (response.status === 204) {

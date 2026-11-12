@@ -1,0 +1,7 @@
+**/node_modules/
+**/target/
+**/.idea/
+**/.env
+**/.env.*
+!**/.env.example
+**/*.iml

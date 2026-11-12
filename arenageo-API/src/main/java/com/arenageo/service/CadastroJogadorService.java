@@ -114,7 +114,10 @@ public class CadastroJogadorService {
     private LocalDate converterDataNascimento(String nascimento) {
         if (nascimento == null || nascimento.isBlank()) return null;
         try {
-            return LocalDate.parse(nascimento);
+            LocalDate data = LocalDate.parse(nascimento);
+            if (data.isAfter(LocalDate.now()))
+                throw new RegraNegocioException("Data de nascimento não pode estar no futuro.");
+            return data;
         } catch (DateTimeParseException exception) {
             throw new RegraNegocioException("Data de nascimento inválida.");
         }
