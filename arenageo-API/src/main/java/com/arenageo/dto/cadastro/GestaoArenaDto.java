@@ -15,6 +15,7 @@ public record GestaoArenaDto(
         List<@NotNull @Valid ExcecaoDto> exceptions,
     boolean publish) {
   public record EspacoDto(
+      @Positive Long id,
       @NotBlank @Size(max = 120, message = "Limite máximo: 120.") String name,
       @NotEmpty @Size(max = 50, message = "Limite máximo: 50.") List<@NotNull Integer> sportIds,
       boolean covered,

@@ -358,6 +358,7 @@ class CadastroIntegracaoTest {
     var spaces =
         List.of(
             new GestaoArenaDto.EspacoDto(
+                null,
                 "Quadra",
                 List.of(player().sports().getFirst().sportId()),
                 true,
@@ -380,6 +381,44 @@ class CadastroIntegracaoTest {
                     List.of(),
                     true))
             .publish());
+    var first = gestao.ler(u.user().id(), id);
+    Long spaceId = first.spaces().getFirst().id();
+    var second = gestao.salvar(u.user().id(), id, first);
+    assertEquals(spaceId, second.spaces().getFirst().id());
+    assertEquals(
+        1, db.queryForObject("select count(*) from tb_espaco where id_arena=?", Integer.class, id));
+    var invalid =
+        new GestaoArenaDto.EspacoDto(
+            99999L, "Inválida", spaces.getFirst().sportIds(), true, "", 10, 20.0, 40.0);
+    assertThrows(
+        RegraNegocioException.class,
+        () ->
+            gestao.salvar(
+                u.user().id(),
+                id,
+                new GestaoArenaDto(
+                    first.arena(),
+                    first.address(),
+                    List.of(invalid),
+                    first.hours(),
+                    first.timezone(),
+                    first.exceptions(),
+                    true)));
+    gestao.salvar(
+        u.user().id(),
+        id,
+        new GestaoArenaDto(
+            first.arena(),
+            first.address(),
+            List.of(),
+            first.hours(),
+            first.timezone(),
+            first.exceptions(),
+            false));
+    assertFalse(
+        db.queryForObject(
+            "select fl_ativo from tb_espaco where id_espaco=?", Boolean.class, spaceId));
+    assertTrue(gestao.ler(u.user().id(), id).spaces().isEmpty());
     assertThrows(
         RecursoNaoEncontradoException.class, () -> gestao.lerEmpresa(999, result.idPerfil()));
   }
