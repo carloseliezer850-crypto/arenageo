@@ -3,7 +3,7 @@ import { test, expect } from "@playwright/test";
 test("menu móvel mantém destinos e fecha por Escape", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/quadro-tatico");
-  const menu = page.getByRole("button", { name: "Menu", exact: true });
+  const menu = page.locator('button[aria-controls="site-navigation"]');
   await expect(page.getByRole("navigation", { name: "Navegação principal" })).toBeHidden();
   await menu.click();
   await expect(menu).toHaveAttribute("aria-expanded", "true");
