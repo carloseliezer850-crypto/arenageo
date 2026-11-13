@@ -1,3 +1,4 @@
+import { obterToken } from "@/services/sessao";
 import type { Metadata } from "next";
 import { Cabecalho } from "@/components/Cabecalho";
 import { Rodape } from "@/components/Rodape";
@@ -10,7 +11,8 @@ export const metadata: Metadata = {
     "Monte formações de futsal, society e futebol. Posicione jogadores e desenhe suas jogadas.",
 };
 
-export default function QuadroTaticoPage() {
+export default async function QuadroTaticoPage() {
+  const connected = Boolean(await obterToken());
   return (
     <div className="app-shell">
       <Cabecalho />
@@ -18,7 +20,7 @@ export default function QuadroTaticoPage() {
         title="Quadro Tático"
         description="Sua ideia de jogo começa aqui. Escolha a modalidade, organize a equipe e desenhe o próximo lance."
       >
-        <QuadroTatico />
+        <QuadroTatico connected={connected} />
       </PaginaRota>
       <Rodape />
     </div>

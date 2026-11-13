@@ -444,6 +444,102 @@ class CadastroIntegracaoTest {
         RecursoNaoEncontradoException.class, () -> gestao.lerEmpresa(999, result.idPerfil()));
   }
 
+  @Autowired QuadroService quadros;
+
+  tools.jackson.databind.JsonNode quadroValido() {
+    var mapper = new tools.jackson.databind.ObjectMapper();
+    var point = Map.of("x", 0.5, "y", 0.5);
+    var pieces = new java.util.ArrayList<Object>();
+    for (int side = 0; side < 2; side++)
+      for (int i = 0; i < 5; i++)
+        pieces.add(
+            Map.of(
+                "id",
+                side + "-" + i,
+                "lado",
+                side,
+                "numero",
+                String.valueOf(i + 1),
+                "nome",
+                "",
+                "x",
+                0.5,
+                "y",
+                0.5));
+    return mapper.valueToTree(
+        Map.of(
+            "versao",
+            1,
+            "modalidade",
+            "futsal",
+            "perfil",
+            "media",
+            "formacoes",
+            List.of("2-2", "3-1"),
+            "jogadores",
+            pieces,
+            "bola",
+            point,
+            "marcacoes",
+            List.of(),
+            "adversario",
+            true));
+  }
+
+  @Test
+  void quadroPrivadoControleDeRevisaoEArquivamento() {
+    var user = jogadores.cadastrar(player()).user().id();
+    var other = contaParticipante("outro-quadro");
+    var id = java.util.UUID.randomUUID();
+    var doc = quadroValido();
+    quadros.save(user, id, "Treino", doc, 0, true);
+    assertThrows(RecursoNaoEncontradoException.class, () -> quadros.read(other, id));
+    assertThrows(
+        RecursoNaoEncontradoException.class,
+        () -> quadros.save(other, id, "Invadido", doc, 0, false));
+    assertTrue(quadros.list(other, "", false).isEmpty());
+    quadros.save(user, id, "Revisão nova", doc, 0, false);
+    assertThrows(
+        CadastroDuplicadoException.class,
+        () -> quadros.save(user, id, "Revisão antiga", doc, 0, false));
+    assertEquals("Revisão nova", quadros.read(user, id).get("title"));
+    quadros.archive(user, id, 1, true);
+    assertTrue(quadros.list(user, "", false).isEmpty());
+    assertEquals(1, quadros.list(user, "nova", true).size());
+    assertThrows(
+        CadastroDuplicadoException.class, () -> quadros.save(user, id, "Arquivado", doc, 2, false));
+    quadros.archive(user, id, 2, false);
+    quadros.delete(user, id, 3);
+    assertTrue(quadros.list(user, "", false).isEmpty());
+  }
+
+  @Test
+  void quadroRejeitaJsonInvalidoSemSubstituirDocumento() {
+    int user = jogadores.cadastrar(player()).user().id();
+    var id = java.util.UUID.randomUUID();
+    var doc = quadroValido();
+    quadros.save(user, id, "Original", doc, 0, true);
+    var mapper = new tools.jackson.databind.ObjectMapper();
+    for (String changed :
+        List.of(
+            doc.toString().replace("\"x\":0.5", "\"x\":1.5"),
+            doc.toString().replace("\"id\":\"0-1\"", "\"id\":\"0-0\""),
+            doc.toString().replace("\"2-2\"", "\"4-4\""),
+            doc.toString().replace("\"versao\":1", "\"versao\":4294967297"),
+            doc.toString().replace("\"modalidade\":\"futsal\"", "\"modalidade\":\"invalida\""))) {
+      assertThrows(
+          RegraNegocioException.class,
+          () -> quadros.save(user, id, "Inválido", mapper.readTree(changed), 0, false));
+    }
+    assertEquals("Original", quadros.read(user, id).get("title"));
+    assertFalse(
+        Boolean.TRUE.equals(
+            db.queryForObject(
+                "select has_table_privilege('anon','tb_quadro_tatico','SELECT') or"
+                    + " has_table_privilege('authenticated','tb_quadro_tatico','UPDATE')",
+                Boolean.class)));
+  }
+
   @Autowired ReservaService reservas;
 
   record ReservaFixture(int owner, int arena, long space, java.time.LocalDateTime start) {}

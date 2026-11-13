@@ -62,3 +62,10 @@ Implementado fluxo gratuito para a plataforma, com preço da quadra e pagamento 
 28 testes backend aprovados localmente; os cinco novos casos verificam concorrência e constraint direta, adjacência/preparo, idempotência/reuso do orçamento, expiração/versão/preço, autorização, cancelamento, histórico, bloqueio, pagamento e exceções na virada do dia. Typecheck, lint (quatro avisos anteriores) e build aprovados. Jornada E2E ampliada com configuração, orçamento, confirmação, reload, agenda e cancelamento, aguardando CI.
 
 Migration `20261113183256_reservas_agenda_local.sql` criada pelo CLI e testada no PostgreSQL isolado; RLS habilitado e acesso Data API revogado (identidade/autorização pelo backend Spring). Não aplicada ao projeto Supabase remoto. Nenhum merge/deploy/cobrança online.
+
+
+## Quadros na conta — 13/11/2026
+
+Persistência privada, biblioteca, pesquisa, renomeação/cópia, arquivo/exclusão e autosave com revisão otimista. Preserva editor local. Migration `20261113184401_quadros_na_conta.sql` preparada, não aplicada no Supabase remoto.
+
+30 testes backend aprovados localmente, incluindo acesso entre contas, revisão antiga, arquivamento/restauração, exclusão e rejeição de documento inválido preservando o anterior. Typecheck, lint (quatro avisos antigos) e build aprovados. E2E ampliado para abrir o quadro em segunda aba, salvar, detectar conflito na primeira e preservar as duas versões com cópia; em validação no CI.

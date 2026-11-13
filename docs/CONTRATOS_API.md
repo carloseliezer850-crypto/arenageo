@@ -29,3 +29,14 @@ O antigo contrato GET `/partidas` array foi substituído por página; frontend e
 - POST /gestao/bloqueios: `{spaceId,start,end,reason}`, Idempotency-Key obrigatório; até 7 dias por bloqueio.
 - POST /reservas/{id}/acoes: `{action,version,reason?}`; CANCELAR, CHECKIN, CONCLUIR, FALTA, RECEBER_LOCAL. Autorização e regras no servidor.
 - BOOKING_CONFLICT (409): sobreposição, orçamento desatualizado/expirado, versão antiga ou transição incompatível. BOOKING_INVALID (400): dados inválidos. FUTURE_BOOKINGS (409): edição de arena incompatível com compromissos futuros.
+
+
+## Quadros privados
+
+- GET /quadros?query=&archived=false: biblioteca da conta, até 100.
+- GET /quadros/{uuid}: documento privado e revisão.
+- POST /quadros: `{title,document,revision:0}` e Idempotency-Key. UUID gerado pelo servidor.
+- PUT /quadros/{uuid}: `{title,document,revision}` e Idempotency-Key. Revisão antiga/arquivada gera BOARD_VERSION_CONFLICT (409).
+- PATCH /quadros/{uuid}: `{revision,archived}`; arquiva/restaura com controle de versão.
+- DELETE /quadros/{uuid}?revision=: exclusão do próprio quadro, com revisão.
+- BOARD_INVALID (400): documento inválido. BOARD_LIMIT (400): 100 quadros atingidos. Recursos de outra conta retornam 404.

@@ -61,7 +61,9 @@ export default async function DashboardPage({
           </p>
         )}
         <Link href="/minhas-partidas">Ver todas as minhas partidas</Link> ·{" "}
-        <Link href="/quadro-tatico">Quadro tático local</Link>
+        <Link href="/quadro-tatico">Meus quadros táticos</Link> ·{" "}
+        <Link href="/reservas">Minhas reservas</Link> ·{" "}
+        <Link href="/arenas">Reservar quadra</Link>
         <h2>Encontrar arenas</h2>
         <form action="/painel" className="form-card">
           <label className="field">

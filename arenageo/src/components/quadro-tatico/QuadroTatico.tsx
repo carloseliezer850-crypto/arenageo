@@ -17,6 +17,7 @@ import {
   type Quadro,
 } from "./modelo";
 import styles from "./quadro.module.css";
+import { QuadrosConta } from "./QuadrosConta";
 
 type Ferramenta = "mover" | Marcacao["tipo"] | "apagar";
 type Arraste = {
@@ -30,7 +31,8 @@ type Arraste = {
 const EQUIPES = ["Azul", "Laranja"];
 const CHAVE = "arenageo-quadro-tatico-v1";
 
-export function QuadroTatico() {
+export function QuadroTatico({ connected = false }: { connected?: boolean }) {
+  const [gesture, setGesture] = useState(false);
   const [quadro, setQuadro] = useState<Quadro>(() => criarQuadro());
   const [selecionado, selecionar] = useState<string | null>(null);
   const [ferramenta, setFerramenta] = useState<Ferramenta>("mover");
@@ -137,9 +139,13 @@ export function QuadroTatico() {
           mudar({
             ...quadro,
             bola: selecionado === "bola" ? destino : quadro.bola,
-            jogadores: quadro.jogadores.map(j => j.id === selecionado ? { ...j, ...destino } : j),
+            jogadores: quadro.jogadores.map((j) =>
+              j.id === selecionado ? { ...j, ...destino } : j,
+            ),
           });
-          setMensagem("Peça posicionada. Desfazer recupera a posição anterior.");
+          setMensagem(
+            "Peça posicionada. Desfazer recupera a posição anterior.",
+          );
           selecionar(null);
         }
         return;
@@ -150,6 +156,7 @@ export function QuadroTatico() {
       setMensagem("Limite de 200 desenhos. Apague alguns para continuar.");
       return;
     }
+    setGesture(true);
     arraste.current = {
       ponteiro: e.pointerId,
       inicio: ponto(e),
@@ -208,6 +215,7 @@ export function QuadroTatico() {
       }
     }
     arraste.current = null;
+    setGesture(false);
     setPrevia(null);
     if (e.currentTarget.hasPointerCapture(e.pointerId))
       e.currentTarget.releasePointerCapture(e.pointerId);
@@ -800,6 +808,12 @@ export function QuadroTatico() {
           }}
         />
       </div>
+      <QuadrosConta
+        quadro={quadro}
+        onLoad={mudar}
+        gesture={gesture}
+        connected={connected}
+      />
       <p className={styles.status} role="status">
         {mensagem}
       </p>
