@@ -143,7 +143,7 @@ test("jogador, perfil, empresa, arena publicada e segunda arena", async ({
   await page.locator('[name="city"]').fill("Bagé");
   await page.locator('[name="location"]').fill("Quadra combinada pelo grupo");
   await page
-    .locator('[name="description"]')
+    .getByRole("textbox", { name: "Descrição e regras", exact: true })
     .fill("Trazer água e confirmar local com organizador.");
   await page.locator('[name="title"]').fill("Oi");
   await page
