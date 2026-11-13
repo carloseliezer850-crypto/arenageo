@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Match } from "@/types/partida";
 import type { SkillLevel } from "@/types/nivelHabilidade";
 import type { Sport } from "@/types/esporte";
@@ -11,6 +12,7 @@ type CartaoPartidaProps = {
 export function CartaoPartida({ match, sport, skillLevel }: CartaoPartidaProps) {
   const matchDate = new Date(match.dateTime);
   const formattedDate = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "timezone" in match ? String(match.timezone) : "America/Sao_Paulo",
     weekday: "short",
     day: "2-digit",
     month: "short",
@@ -25,7 +27,7 @@ export function CartaoPartida({ match, sport, skillLevel }: CartaoPartidaProps) 
           <p className="match-sport">{sport.name}</p>
           <h3>{match.title}</h3>
         </div>
-        <span className="match-status">Aberto</span>
+        <span className="match-status">{match.statusId !== 1 ? "Encerrada" : match.currentPlayers >= match.maxPlayers ? "Lista de espera" : "Aberta"}</span>
       </div>
 
       <div className="match-meta">
@@ -44,9 +46,9 @@ export function CartaoPartida({ match, sport, skillLevel }: CartaoPartidaProps) 
       </div>
 
       <div className="match-actions">
-        <button type="button" className="primary-button small">
-          Entrar na partida
-        </button>
+        <Link href={`/partidas/${match.id}`} className="primary-button small">
+          Ver partida
+        </Link>
       </div>
     </article>
   );

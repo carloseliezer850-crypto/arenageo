@@ -53,13 +53,11 @@ test("jogador, perfil, empresa, arena publicada e segunda arena", async ({
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j5xkAAAAASUVORK5CYII=",
     "base64",
   );
-  await page
-    .locator("input[type=file]")
-    .setInputFiles({
-      name: "perfil.png",
-      mimeType: "image/png",
-      buffer: image,
-    });
+  await page.locator("input[type=file]").setInputFiles({
+    name: "perfil.png",
+    mimeType: "image/png",
+    buffer: image,
+  });
   await expect(page.locator(".cadastro-toast")).toContainText("Imagem enviada");
   await page.reload();
   await expect(page.locator("figure img")).toBeVisible();
@@ -105,6 +103,28 @@ test("jogador, perfil, empresa, arena publicada e segunda arena", async ({
   await expect(page.locator(".cadastro-toast")).toContainText("Arena salva");
   await page.reload();
   await expect(page.locator('[name="spaces[0].name"]')).toHaveValue("Quadra 1");
+  const arenaManagementUrl = page.url();
+  await page
+    .getByRole("link", { name: "Preço e reservas: Quadra 1", exact: true })
+    .click();
+  await page
+    .getByRole("checkbox", {
+      name: "Ativar reservas online confirmadas automaticamente",
+    })
+    .check();
+  await page.getByLabel("Preço por hora (R$)", { exact: true }).fill("120,00");
+  await page
+    .getByLabel("Antecedência para cancelamento online em horas")
+    .fill("24");
+  await page
+    .getByLabel("Condições da reserva")
+    .fill("Pagamento no local. Cancelamento online até 24 horas antes.");
+  await page
+    .getByRole("button", { name: "Salvar configuração", exact: true })
+    .click();
+  await expect(
+    page.getByText("Configuração salva.", { exact: true }),
+  ).toBeVisible();
   await page.goto("/painel?cidade=Bag%C3%A9");
   await expect(
     page.getByRole("heading", { name: "Arena E2E", exact: true }),
@@ -134,4 +154,155 @@ test("jogador, perfil, empresa, arena publicada e segunda arena", async ({
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/criar-partida");
+  await page.locator('[name="title"]').fill("Partida E2E gratuita");
+  await page.locator('[name="sportId"]').selectOption({ index: 1 });
+  await page.locator('[name="skillLevelId"]').selectOption({ index: 1 });
+  const future =
+    new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10) + "T18:00";
+  await page.locator('[name="dateTime"]').fill(future);
+  await page.locator('[name="city"]').fill("Bagé");
+  await page.locator('[name="location"]').fill("Quadra combinada pelo grupo");
+  await page
+    .getByRole("textbox", { name: "Descrição e regras", exact: true })
+    .fill("Trazer água e confirmar local com organizador.");
+  await page.locator('[name="title"]').fill("Oi");
+  await page
+    .getByRole("button", { name: "Publicar partida", exact: true })
+    .click();
+  await expect(page.locator('[name="title"]')).toBeFocused();
+  await page.locator('[name="title"]').fill("Partida E2E gratuita");
+  await page
+    .getByRole("button", { name: "Publicar partida", exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/partidas\/\d+/);
+  await expect(
+    page.getByRole("heading", { name: "Partida E2E gratuita", exact: true }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(
+    page.getByText("Sua participação: CONFIRMADA", { exact: true }),
+  ).toBeVisible();
+  await page.goto("/partidas?cidade=Bage&uf=RS");
+  await expect(
+    page.getByRole("link", { name: "Partida E2E gratuita", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator('[name="cidade"]')).toHaveValue("Bage");
+  await page.goto("/minhas-partidas");
+  await expect(
+    page.getByRole("link", { name: "Partida E2E gratuita", exact: true }),
+  ).toBeVisible();
+  await page.goto("/arenas?cidade=Bag%C3%A9&uf=RS");
+  await page.getByRole("link", { name: "Arena E2E", exact: true }).click();
+  await page
+    .getByRole("link", { name: "Consultar horários", exact: true })
+    .click();
+  const bookingDay = new Date(Date.now() + 7 * 86400000);
+  while (bookingDay.getUTCDay() !== 1)
+    bookingDay.setUTCDate(bookingDay.getUTCDate() + 1);
+  await page
+    .getByLabel("Data na arena")
+    .fill(bookingDay.toISOString().slice(0, 10));
+  await page
+    .getByRole("button", { name: "Consultar disponibilidade", exact: true })
+    .click();
+  await page.getByLabel("Horário disponível").selectOption({ label: "10:00" });
+  await page
+    .getByRole("button", { name: "Revisar orçamento", exact: true })
+    .click();
+  await expect(page.getByText("Total:", { exact: false })).toContainText(
+    "120,00",
+  );
+  await page
+    .getByRole("checkbox", { name: "Li e aceito o preço e as condições" })
+    .check();
+  await page
+    .getByRole("button", {
+      name: "Confirmar reserva — pagar no local",
+      exact: true,
+    })
+    .click();
+  await expect(page).toHaveURL(/\/reservas\/\d+/);
+  const bookingUrl = page.url();
+  await expect(page.getByText("Protocolo:", { exact: false })).toContainText(
+    "CONFIRMADA",
+  );
+  await page.reload();
+  await expect(
+    page.getByText("Pagamento pendente no local", { exact: false }),
+  ).toBeVisible();
+  await page.goto(
+    arenaManagementUrl +
+      "/agenda?date=" +
+      bookingDay.toISOString().slice(0, 10),
+  );
+  await expect(
+    page.getByRole("link", { name: "Quadra 1", exact: true }),
+  ).toBeVisible();
+  await page.goto(bookingUrl);
+  await page
+    .getByLabel("Motivo", { exact: true })
+    .fill("Cancelamento de teste após revisão");
+  await page
+    .getByRole("checkbox", { name: "Confirmo o cancelamento deste horário" })
+    .check();
+  await page
+    .getByRole("button", { name: "Cancelar reserva", exact: true })
+    .click();
+  await expect(page.getByText("Protocolo:", { exact: false })).toContainText(
+    "CANCELADA",
+  );
+  await page.goto("/quadro-tatico");
+  await page.getByLabel("Título do quadro", { exact: true }).fill("Treino E2E");
+  await page
+    .getByRole("button", { name: "Salvar na conta", exact: true })
+    .click();
+  await expect(
+    page.getByText("Salvo na conta.", { exact: true }),
+  ).toBeVisible();
+  const otherTab = await page.context().newPage();
+  await otherTab.goto("/quadro-tatico");
+  await otherTab
+    .getByRole("button", { name: "Carregar biblioteca", exact: true })
+    .click();
+  otherTab.once("dialog", (dialog) => dialog.accept());
+  await otherTab
+    .getByRole("button", { name: "Abrir Treino E2E", exact: true })
+    .click();
+  await expect(
+    otherTab.getByLabel("Título do quadro", { exact: true }),
+  ).toHaveValue("Treino E2E");
+  await otherTab
+    .getByLabel("Título do quadro", { exact: true })
+    .fill("Treino E2E revisado");
+  await expect(
+    otherTab.getByText("Salvo na conta.", { exact: true }),
+  ).toBeVisible();
+  await page
+    .getByLabel("Título do quadro", { exact: true })
+    .fill("Minha cópia E2E");
+  await expect(
+    page.getByText("O quadro mudou em outra aba", { exact: false }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Salvar como cópia", exact: true })
+    .click();
+  await expect(
+    page.getByText("Salvo na conta.", { exact: true }),
+  ).toBeVisible();
+  await page.reload();
+  await page
+    .getByRole("button", { name: "Carregar biblioteca", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Abrir Minha cópia E2E", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", {
+      name: "Abrir Treino E2E revisado",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await otherTab.close();
 });

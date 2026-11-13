@@ -14,19 +14,10 @@ export function Hero() {
           <BuscaPartida />
         </div>
 
-        <div className="hero-panel" aria-label="Resumo do produto">
-          <div className="hero-stat">
-            <strong>312</strong>
-            <span>partidas ativas</span>
-          </div>
-          <div className="hero-stat">
-            <strong>1.8k</strong>
-            <span>jogadores próximos</span>
-          </div>
-          <div className="hero-stat">
-            <strong>92%</strong>
-            <span>compatibilidade de time</span>
-          </div>
+        <div className="hero-panel" aria-label="Organize seu próximo jogo">
+          <div className="hero-stat"><strong>Encontre</strong><span>Escolha a sua modalidade e cidade.</span></div>
+          <div className="hero-stat"><strong>Organize</strong><span>Combine os detalhes com seu grupo.</span></div>
+          <div className="hero-stat"><strong>Planeje</strong><span>Monte suas jogadas no quadro tático.</span></div>
         </div>
       </div>
     </section>

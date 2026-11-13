@@ -1,215 +1,248 @@
 "use client";
-
-import { useState } from "react";
-import type { CriarPartidaRequest } from "@/types/autenticacao";
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { criarPartida } from "@/services/servicoPartida";
+import { useToast } from "./ToastProvider";
+import type { NovaPartida } from "@/types/partidaPlataforma";
+import type { Sport } from "@/types/esporte";
+import type { SkillLevel } from "@/types/nivelHabilidade";
 
-const initialState: CriarPartidaRequest = {
-  creatorId: 0,
-  sportId: 0,
-  spaceId: null,
-  title: "",
-  description: "",
-  dateTime: "",
-  durationMinutes: 90,
-  maxPlayers: 0,
-  skillLevelId: 0,
-  city: "",
-  visibility: "public",
-};
-
-const sportMap: Record<number, string> = {
-  1: "Futebol",
-  2: "Futsal",
-  3: "Beach Tennis",
-};
-
-export function FormularioCriarPartida() {
-  const [form, setForm] = useState<CriarPartidaRequest>(initialState);
+export function FormularioCriarPartida({
+  sports,
+  levels,
+}: {
+  sports: Sport[];
+  levels: SkillLevel[];
+}) {
+  const router = useRouter(),
+    toast = useToast();
+  const [body, setBody] = useState<NovaPartida>({
+    title: "",
+    description: "",
+    sportId: 0,
+    skillLevelId: 0,
+    location: "",
+    city: "",
+    state: "RS",
+    dateTime: "",
+    timezone: "America/Sao_Paulo",
+    durationMinutes: 90,
+    maxPlayers: 10,
+    participate: true,
+    publish: true,
+  });
+  const [busy, setBusy] = useState(false),
+    [message, setMessage] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [submitMessage, setSubmitMessage] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const validate = () => {
-    const nextErrors: Record<string, string> = {};
-
-    if (!form.title.trim()) nextErrors.title = "Título obrigatório.";
-    if (!form.dateTime) nextErrors.dateTime = "Data e horário são obrigatórios.";
-    if (!form.city.trim()) nextErrors.city = "Cidade obrigatória.";
-    if (form.maxPlayers <= 0) nextErrors.maxPlayers = "Quantidade de jogadores deve ser maior que zero.";
-    if (!form.skillLevelId) nextErrors.skillLevelId = "Nível é obrigatório.";
-
-    setErrors(nextErrors);
-    return Object.keys(nextErrors).length === 0;
-  };
-
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!validate()) {
-      setSubmitMessage("Corrija os campos obrigatórios antes de continuar.");
-      return;
-    }
-
-    setIsSubmitting(true);
-    setSubmitMessage("");
-
-    try {
-      const result = await criarPartida(form);
-      setSubmitMessage(result.message);
-    } catch {
-      setSubmitMessage("Não foi possível conectar ao servidor. Tente novamente mais tarde.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const updateForm = <K extends keyof CriarPartidaRequest>(field: K, value: CriarPartidaRequest[K]) => {
-    setForm((current) => ({ ...current, [field]: value }));
-  };
-
-  const dateLabel = form.dateTime ? new Date(form.dateTime).toLocaleDateString("pt-BR") : "Data ainda não definida";
-  const timeLabel = form.dateTime ? new Date(form.dateTime).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "Horário não definido";
-
+  const key = useRef<string>(""),
+    locked = useRef(false),
+    previous = useRef("");
+  const [unknown, setUnknown] = useState(false);
+  const form = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    if (busy || unknown) return;
+    const name = Object.keys(errors)[0];
+    if (name)
+      (form.current?.elements.namedItem(name) as HTMLElement | null)?.focus();
+  }, [busy, errors, unknown]);
+  function update<K extends keyof NovaPartida>(name: K, value: NovaPartida[K]) {
+    setBody((v) => ({ ...v, [name]: value }));
+  }
+  const field = (
+    name: keyof NovaPartida,
+    label: string,
+    type = "text",
+    min?: number,
+    max?: number,
+  ) => (
+    <label className="field" key={name}>
+      {label}
+      <input
+        name={name}
+        type={type}
+        value={String(body[name])}
+        required
+        min={min}
+        max={max}
+        maxLength={name === "title" ? 120 : name === "location" ? 200 : 120}
+        onChange={(e) =>
+          update(
+            name,
+            (type === "number"
+              ? Number(e.target.value)
+              : e.target.value) as never,
+          )
+        }
+        aria-invalid={Boolean(errors[name])}
+      />
+      {errors[name] && <small role="alert">{errors[name]}</small>}
+    </label>
+  );
   return (
-    <form className="form-card create-form-card" onSubmit={handleSubmit} noValidate>
-      <div className="create-match-layout">
-        <div className="form-sections-stack">
-          <div className="form-section">
-            <h3 className="section-title">Informações da partida</h3>
-            <div className="form-grid two-columns">
-              <label className="field full-width">
-                <span>Nome da partida</span>
-                <input value={form.title} onChange={(event) => updateForm("title", event.target.value)} />
-                {errors.title ? <small>{errors.title}</small> : null}
-              </label>
-
-              <label className="field">
-                <span>Esporte</span>
-                <select value={form.sportId} onChange={(event) => updateForm("sportId", Number(event.target.value))}>
-                  <option value={1}>Futebol</option>
-                  <option value={2}>Futsal</option>
-                  <option value={3}>Beach Tennis</option>
-                </select>
-              </label>
-
-              <label className="field full-width">
-                <span>Descrição</span>
-                <textarea value={form.description} onChange={(event) => updateForm("description", event.target.value)} rows={4} />
-              </label>
-            </div>
-          </div>
-
-          <div className="form-section">
-            <h3 className="section-title">Quando vai acontecer?</h3>
-            <div className="form-grid three-columns">
-              <label className="field">
-                <span>Data</span>
-                <input type="date" value={form.dateTime ? form.dateTime.slice(0, 10) : ""} onChange={(event) => {
-                  const nextDate = event.target.value;
-                  const currentTime = form.dateTime ? form.dateTime.slice(11, 16) : "";
-                  updateForm("dateTime", nextDate ? `${nextDate}${currentTime ? `T${currentTime}` : ""}` : "");
-                }} />
-                {errors.dateTime ? <small>{errors.dateTime}</small> : null}
-              </label>
-
-              <label className="field">
-                <span>Horário</span>
-                <input type="time" value={form.dateTime?.slice(11, 16) ?? ""} onChange={(event) => {
-                  const currentDate = form.dateTime ? form.dateTime.slice(0, 10) : "";
-                  updateForm("dateTime", currentDate ? `${currentDate}T${event.target.value}` : "");
-                }} />
-              </label>
-
-              <label className="field">
-                <span>Duração</span>
-                <input type="number" value={form.durationMinutes} onChange={(event) => updateForm("durationMinutes", Number(event.target.value))} />
-              </label>
-            </div>
-          </div>
-
-          <div className="form-section">
-            <h3 className="section-title">Configuração da partida</h3>
-            <div className="form-grid three-columns">
-              <label className="field">
-                <span>Número de jogadores</span>
-                <input type="number" value={form.maxPlayers} onChange={(event) => updateForm("maxPlayers", Number(event.target.value))} />
-                {errors.maxPlayers ? <small>{errors.maxPlayers}</small> : null}
-              </label>
-
-              <label className="field">
-                <span>Nível</span>
-                <select value={form.skillLevelId} onChange={(event) => updateForm("skillLevelId", Number(event.target.value))}>
-                  <option value={1}>Iniciante</option>
-                  <option value={2}>Intermediário</option>
-                  <option value={3}>Avançado</option>
-                </select>
-                {errors.skillLevelId ? <small>{errors.skillLevelId}</small> : null}
-              </label>
-
-              <div className="field radio-field">
-                <span>Visibilidade</span>
-                <div className="radio-group">
-                  <label>
-                    <input type="radio" name="visibility" checked={form.visibility === "public"} onChange={() => updateForm("visibility", "public")} />
-                    Pública
-                  </label>
-                  <label>
-                    <input type="radio" name="visibility" checked={form.visibility === "private"} onChange={() => updateForm("visibility", "private")} />
-                    Privada
-                  </label>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="form-section">
-            <h3 className="section-title">Onde será a partida?</h3>
-            <div className="form-grid two-columns">
-              <label className="field">
-                <span>Cidade</span>
-                <input value={form.city} onChange={(event) => updateForm("city", event.target.value)} />
-                {errors.city ? <small>{errors.city}</small> : null}
-              </label>
-
-              <label className="field">
-                <span>Arena</span>
-                <input placeholder="Arena Sul" />
-              </label>
-
-              <label className="field full-width">
-                <span>Espaço / quadra</span>
-                <input placeholder="Quadra 2" />
-              </label>
-            </div>
-            <p className="form-help">Você poderá escolher o espaço depois.</p>
-          </div>
+    <form
+      ref={form}
+      className="form-card"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        if (locked.current) return;
+        locked.current = true;
+        setBusy(true);
+        const payload = JSON.stringify(body);
+        if (previous.current !== payload && !unknown) {
+          key.current = crypto.randomUUID();
+          previous.current = payload;
+        }
+        try {
+          const r = await criarPartida(body, key.current);
+          setErrors(r.fields);
+          setMessage(r.message);
+          toast(r.message);
+          if (r.success) {
+            router.push(`/partidas/${r.data.id}`);
+            router.refresh();
+          } else {
+            setUnknown(r.code === "RESULT_UNKNOWN");
+          }
+        } finally {
+          locked.current = false;
+          setBusy(false);
+        }
+      }}
+    >
+      <p>
+        Partida gratuita em local informado. Criar ou publicar não reserva uma
+        quadra.
+      </p>
+      <fieldset disabled={busy || unknown} style={{ border: 0, padding: 0 }}>
+        <div className="form-grid two-columns">
+          {field("title", "Nome da partida")}
+          <label className="field">
+            Esporte
+            <select
+              name="sportId"
+              required
+              value={body.sportId || ""}
+              onChange={(e) => update("sportId", Number(e.target.value))}
+            >
+              <option value="">Selecione</option>
+              {sports.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+            <small>{errors.sportId}</small>
+          </label>
+          <label className="field">
+            Nível
+            <select
+              name="skillLevelId"
+              required
+              value={body.skillLevelId || ""}
+              onChange={(e) => update("skillLevelId", Number(e.target.value))}
+            >
+              <option value="">Selecione</option>
+              {levels.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+            <small>{errors.skillLevelId}</small>
+          </label>
+          {field("dateTime", "Data e horário", "datetime-local")}
+          <label className="field">
+            Fuso
+            <select
+              name="timezone"
+              value={body.timezone}
+              onChange={(e) => update("timezone", e.target.value)}
+            >
+              {[
+                "America/Sao_Paulo",
+                "America/Manaus",
+                "America/Rio_Branco",
+                "America/Noronha",
+              ].map((z) => (
+                <option key={z}>{z}</option>
+              ))}
+            </select>
+            <small>{errors.timezone}</small>
+          </label>
+          {field("durationMinutes", "Duração em minutos", "number", 15, 480)}
+          {field("maxPlayers", "Total de participantes", "number", 2, 100)}
+          {field("city", "Cidade")}
+          <label className="field">
+            UF
+            <select
+              name="state"
+              value={body.state}
+              onChange={(e) => update("state", e.target.value)}
+            >
+              {"AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO"
+                .split(" ")
+                .map((v) => (
+                  <option key={v}>{v}</option>
+                ))}
+            </select>
+          </label>
+          {field("location", "Nome e endereço do local combinado")}
+          <label className="field">
+            Descrição e regras
+            <textarea
+              name="description"
+              required
+              maxLength={3000}
+              value={body.description}
+              onChange={(e) => update("description", e.target.value)}
+            />
+            <small>{errors.description}</small>
+          </label>
         </div>
-
-        <aside className="summary-card">
-          <h3>Resumo</h3>
-          <div className="summary-body">
-            <strong>{form.title || "Sua partida"}</strong>
-            <p>{sportMap[form.sportId] || "Esporte"}</p>
-            <ul>
-              <li>{dateLabel}</li>
-              <li>{timeLabel}</li>
-              <li>{form.maxPlayers} jogadores</li>
-              <li>{form.skillLevelId === 1 ? "Iniciante" : form.skillLevelId === 2 ? "Intermediário" : "Avançado"}</li>
-            </ul>
-            <span className="summary-local">{form.city || "Local ainda não definido"}</span>
-          </div>
-        </aside>
-      </div>
-
+        <label>
+          <input
+            type="checkbox"
+            checked={body.participate}
+            onChange={(e) => update("participate", e.target.checked)}
+          />{" "}
+          Também vou jogar (ocupa uma vaga)
+        </label>
+        <label className="field">
+          Salvar como
+          <select
+            value={String(body.publish)}
+            onChange={(e) => update("publish", e.target.value === "true")}
+          >
+            <option value="true">Partida pública</option>
+            <option value="false">Rascunho privado</option>
+          </select>
+        </label>
+        <p>
+          Revise local, fuso e capacidade. Os detalhes públicos ficam visíveis a
+          visitantes após publicar.
+        </p>
+      </fieldset>
+      {message && <p role="status">{message}</p>}
+      {unknown && (
+        <p>
+          Os dados foram preservados para repetir o mesmo envio sem criar outra
+          partida.{" "}
+          <Link href="/minhas-partidas">Consultar minhas partidas</Link>
+        </p>
+      )}
       <div className="action-row">
-        <button type="button" className="secondary-button">Cancelar</button>
-        <button type="submit" className="primary-button" disabled={isSubmitting}>
-          {isSubmitting ? "Criando partida..." : "Criar partida"}
+        <Link href="/partidas">Voltar</Link>
+        <button disabled={busy} className="primary-button">
+          {busy
+            ? "Salvando…"
+            : unknown
+              ? "Verificar e repetir envio"
+              : body.publish
+                ? "Publicar partida"
+                : "Salvar rascunho"}
         </button>
       </div>
-
-      {submitMessage ? <p className="success-message">{submitMessage}</p> : null}
     </form>
   );
 }
-

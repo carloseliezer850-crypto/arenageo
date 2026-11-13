@@ -1,14 +1,7 @@
 import Link from "next/link";
 
 import { obterToken } from "@/services/sessao";
-import { sair } from "@/services/servicoAutenticacao";
-
-const navigation = [
-  { label: "Encontrar partidas", href: "/partidas" },
-  { label: "Encontrar jogadores", href: "/jogadores" },
-  { label: "Como funciona", href: "/como-funciona" },
-  { label: "Criar partida", href: "/criar-partida" },
-];
+import { MenuNavegacao } from "./MenuNavegacao";
 
 export async function Cabecalho() {
   const conectado = Boolean(await obterToken());
@@ -25,23 +18,7 @@ export async function Cabecalho() {
           ArenaGeo
         </Link>
 
-        <nav className="main-nav" aria-label="Navegação principal">
-          {navigation.map((item) => (
-            <Link key={item.href} href={item.href}>
-              {item.label}
-            </Link>
-          ))}
-        </nav>
-
-        <div className="header-actions">
-          {conectado ? <>
-            <Link href="/painel" className="text-button">Meu painel</Link>
-            <form action={sair}><button className="text-button">Sair</button></form>
-          </> : <>
-            <Link href="/entrar" className="text-button">Entrar</Link>
-            <Link href="/cadastro" className="primary-button small">Criar conta</Link>
-          </>}
-        </div>
+        <MenuNavegacao conectado={conectado} />
       </div>
     </header>
   );

@@ -73,14 +73,7 @@ export function enviarApi<TResponse, TBody>(
   return requisitarApi<TResponse>(url, { method: "POST", body });
 }
 
+// Keep the legacy export while preserving network failures for route error states.
 export async function obterApiOuVazio<T>(url: string): Promise<T[]> {
-  try {
-    return await obterApi<T[]>(url);
-  } catch (error) {
-    if (error instanceof TypeError) {
-      return [];
-    }
-
-    throw error;
-  }
+  return obterApi<T[]>(url);
 }

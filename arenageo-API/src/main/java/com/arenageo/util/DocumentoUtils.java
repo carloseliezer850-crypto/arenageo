@@ -7,6 +7,10 @@ public final class DocumentoUtils {
     return valor == null ? "" : valor.replaceAll("[^0-9]", "");
   }
 
+  public static String cepOpcional(String valor) {
+    return valor == null || valor.isBlank() ? null : somenteDigitos(valor);
+  }
+
   public static boolean cpfValido(String documento) {
     if (documento == null
         || !documento.matches("(?:[0-9]{11}|[0-9]{3}[.][0-9]{3}[.][0-9]{3}-[0-9]{2})"))

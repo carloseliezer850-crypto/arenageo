@@ -85,7 +85,7 @@ public class PerfilJogadorService {
         enderecos
             .findByPessoa_IdPessoaAndFlPrincipalTrue(p.getIdPessoa())
             .orElseThrow(() -> new RecursoNaoEncontradoException("Endereço não encontrado."));
-    e.setNmCep(com.arenageo.util.DocumentoUtils.somenteDigitos(d.address().zipCode()));
+    e.setNmCep(com.arenageo.util.DocumentoUtils.cepOpcional(d.address().zipCode()));
     e.setNmUf(d.address().state());
     e.setNmCidade(d.address().city().trim());
     e.setNmBairro(d.address().neighborhood());

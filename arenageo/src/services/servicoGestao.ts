@@ -6,6 +6,7 @@ export interface GestaoArena {
   arena: RegisterBusinessRequest["arena"];
   address: RegisterBusinessRequest["address"];
   spaces: {
+    id?: number;
     name: string;
     sportIds: number[];
     covered: boolean;
