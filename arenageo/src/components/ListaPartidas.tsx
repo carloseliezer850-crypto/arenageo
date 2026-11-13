@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Match } from "@/types/partida";
 import type { SkillLevel } from "@/types/nivelHabilidade";
 import type { Sport } from "@/types/esporte";
@@ -20,16 +21,16 @@ export function ListaPartidas({ matches, sports, skillLevels }: ListaPartidasPro
           <p className="eyebrow">Partidas próximas</p>
           <h2 id="matches-heading">Encontre uma partida agora</h2>
         </div>
-        <button type="button" className="text-link">
+        <Link href="/partidas" className="text-link">
           Ver todas
-        </button>
+        </Link>
       </div>
 
       <div className="match-grid">
         {matches.length === 0 ? (
           <div className="empty-state">
             <h3>Nenhuma partida disponível</h3>
-            <p>As partidas publicadas aparecerão aqui quando o serviço estiver conectado.</p>
+            <p>Crie a primeira partida ou tente outra cidade.</p>
           </div>
         ) : matches.map((match) => {
           const sport = sportById.get(match.sportId);

@@ -422,4 +422,232 @@ class CadastroIntegracaoTest {
     assertThrows(
         RecursoNaoEncontradoException.class, () -> gestao.lerEmpresa(999, result.idPerfil()));
   }
+
+  @Autowired PartidaService partidas;
+
+  int contaParticipante(String name) {
+    return db.queryForObject(
+        "insert into tb_usuario(id_tipo_conta,nm_email,nm_senha_hash) select"
+            + " id_tipo_conta,?,nm_senha_hash from tb_usuario order by id_usuario limit 1 returning"
+            + " id_usuario",
+        Integer.class,
+        name + "@example.test");
+  }
+
+  com.arenageo.dto.partida.PartidaRequest novaPartida(boolean publish, boolean participate) {
+    return new com.arenageo.dto.partida.PartidaRequest(
+        "Jogo de teste",
+        player().sports().getFirst().sportId(),
+        player().sports().getFirst().skillLevelId(),
+        "Trazer água",
+        "Quadra combinada",
+        "Bagé",
+        "RS",
+        java.time.LocalDateTime.now()
+            .plusDays(2)
+            .withHour(18)
+            .withMinute(0)
+            .withSecond(0)
+            .withNano(0),
+        "America/Sao_Paulo",
+        60,
+        2,
+        participate,
+        publish);
+  }
+
+  @Test
+  void partidasUltimaVagaConcorrenteEFilaSemDuplicacao() throws Exception {
+    int owner = jogadores.cadastrar(player()).user().id();
+    int a = contaParticipante("a"), b = contaParticipante("b");
+    long id = ((Number) partidas.criar(owner, novaPartida(true, true)).get("id")).longValue();
+    var gate = new CountDownLatch(1);
+    try (var pool = Executors.newFixedThreadPool(2)) {
+      var fa =
+          pool.submit(
+              () -> {
+                gate.await();
+                return partidas.participar(id, a, false);
+              });
+      var fb =
+          pool.submit(
+              () -> {
+                gate.await();
+                return partidas.participar(id, b, false);
+              });
+      gate.countDown();
+      var ra = fa.get(10, TimeUnit.SECONDS);
+      var rb = fb.get(10, TimeUnit.SECONDS);
+      assertEquals(
+          Set.of("CONFIRMADA", "LISTA_ESPERA"),
+          Set.of(ra.get("participation"), rb.get("participation")));
+      int confirmed = ra.get("participation").equals("CONFIRMADA") ? a : b;
+      int waiting = confirmed == a ? b : a;
+      partidas.participar(id, confirmed, false);
+      assertEquals(2, ((Number) partidas.detalhe(id, owner).get("currentPlayers")).intValue());
+      partidas.participar(id, confirmed, true);
+      assertEquals("LISTA_ESPERA", partidas.participar(id, confirmed, false).get("participation"));
+      assertEquals("CONFIRMADA", partidas.participar(id, waiting, false).get("participation"));
+      assertEquals(
+          3,
+          db.queryForObject(
+              "select count(*) from tb_partida_participante where id_partida=?",
+              Integer.class,
+              id));
+    }
+  }
+
+  @Test
+  void rascunhoPrivadoFiltrosEEstadoProtegidos() {
+    int owner = jogadores.cadastrar(player()).user().id(), other = contaParticipante("other");
+    var d = partidas.criar(owner, novaPartida(false, true));
+    long id = ((Number) d.get("id")).longValue();
+    assertThrows(RecursoNaoEncontradoException.class, () -> partidas.detalhe(id, other));
+    assertThrows(RecursoNaoEncontradoException.class, () -> partidas.detalhe(id, null));
+    assertEquals(0L, partidas.buscar("", "", null, null, null, 0, 12).get("total"));
+    assertThrows(
+        RecursoNaoEncontradoException.class,
+        () -> partidas.transicao(id, other, "PUBLICADA", 0, null));
+    partidas.transicao(id, owner, "PUBLICADA", 0, null);
+    assertEquals(
+        1L,
+        partidas
+            .buscar("Bage", "RS", novaPartida(true, true).sportId(), null, null, 0, 12)
+            .get("total"));
+    assertEquals(0L, partidas.buscar("Bagé", "SC", null, null, null, 0, 12).get("total"));
+    assertThrows(
+        CadastroDuplicadoException.class,
+        () -> partidas.transicao(id, owner, "CANCELADA", 0, "Chuva"));
+    partidas.transicao(id, owner, "CANCELADA", 1, "Chuva");
+    assertThrows(CadastroDuplicadoException.class, () -> partidas.participar(id, other, false));
+  }
+
+  @Test
+  void partidasRespeitamAgendaEData() {
+    int owner = jogadores.cadastrar(player()).user().id();
+    partidas.criar(owner, novaPartida(true, true));
+    assertThrows(
+        CadastroDuplicadoException.class, () -> partidas.criar(owner, novaPartida(true, true)));
+    assertEquals(1, db.queryForObject("select count(*) from tb_partida", Integer.class));
+    var d = novaPartida(true, false);
+    var old =
+        new com.arenageo.dto.partida.PartidaRequest(
+            d.title(),
+            d.sportId(),
+            d.skillLevelId(),
+            d.description(),
+            d.location(),
+            d.city(),
+            d.state(),
+            java.time.LocalDateTime.now().minusDays(1),
+            d.timezone(),
+            d.durationMinutes(),
+            d.maxPlayers(),
+            false,
+            true);
+    assertThrows(RegraNegocioException.class, () -> partidas.criar(owner, old));
+    var dst =
+        new com.arenageo.dto.partida.PartidaRequest(
+            d.title(),
+            d.sportId(),
+            d.skillLevelId(),
+            d.description(),
+            d.location(),
+            d.city(),
+            d.state(),
+            java.time.LocalDateTime.of(2027, 3, 14, 2, 30),
+            "America/New_York",
+            60,
+            2,
+            false,
+            true);
+    assertThrows(RegraNegocioException.class, () -> partidas.criar(owner, dst));
+  }
+
+  @Test
+  void partidasIdempotenciaEApiPublica() throws Exception {
+    var auth = jogadores.cadastrar(player());
+    int owner = auth.user().id();
+    String key = UUID.randomUUID().toString();
+    var d = novaPartida(true, true);
+    idem.executar(key, "Partida:" + owner, d, () -> partidas.criar(owner, d));
+    idem.executar(
+        key,
+        "Partida:" + owner,
+        d,
+        () -> {
+          throw new AssertionError("Replay recriou partida");
+        });
+    assertEquals(1, db.queryForObject("select count(*) from tb_partida", Integer.class));
+    var client = java.net.http.HttpClient.newHttpClient();
+    var search =
+        client.send(
+            java.net.http.HttpRequest.newBuilder(
+                    java.net.URI.create("http://localhost:" + port + "/partidas"))
+                .GET()
+                .build(),
+            java.net.http.HttpResponse.BodyHandlers.ofString());
+    assertEquals(200, search.statusCode());
+    assertFalse(search.body().contains("nm_senha_hash"));
+    assertFalse(search.body().contains("@example.test"));
+    var mine =
+        client.send(
+            java.net.http.HttpRequest.newBuilder(
+                    java.net.URI.create("http://localhost:" + port + "/partidas/minhas"))
+                .GET()
+                .build(),
+            java.net.http.HttpResponse.BodyHandlers.ofString());
+    assertEquals(401, mine.statusCode());
+    var invalid =
+        client.send(
+            java.net.http.HttpRequest.newBuilder(
+                    java.net.URI.create("http://localhost:" + port + "/partidas?page=oops"))
+                .GET()
+                .build(),
+            java.net.http.HttpResponse.BodyHandlers.ofString());
+    assertEquals(400, invalid.statusCode());
+    var mapper = new tools.jackson.databind.ObjectMapper();
+    var payload = new LinkedHashMap<String, Object>();
+    payload.put("title", "Partida com identidade forjada");
+    payload.put("sportId", d.sportId());
+    payload.put("skillLevelId", d.skillLevelId());
+    payload.put("description", "Teste de autorização");
+    payload.put("location", "Local de teste");
+    payload.put("city", "Bagé");
+    payload.put("state", "RS");
+    payload.put("dateTime", d.dateTime().plusDays(1).toString());
+    payload.put("timezone", d.timezone());
+    payload.put("durationMinutes", 60);
+    payload.put("maxPlayers", 2);
+    payload.put("participate", false);
+    payload.put("publish", true);
+    payload.put("creatorId", 999999);
+    var post =
+        client.send(
+            java.net.http.HttpRequest.newBuilder(
+                    java.net.URI.create("http://localhost:" + port + "/partidas"))
+                .header("Authorization", "Bearer " + auth.token())
+                .header("Idempotency-Key", UUID.randomUUID().toString())
+                .header("Content-Type", "application/json")
+                .POST(
+                    java.net.http.HttpRequest.BodyPublishers.ofString(
+                        mapper.writeValueAsString(payload)))
+                .build(),
+            java.net.http.HttpResponse.BodyHandlers.ofString());
+    assertTrue(post.statusCode() == 200 || post.statusCode() == 400);
+    if (post.statusCode() == 200)
+      assertEquals(
+          owner, ((Number) mapper.readValue(post.body(), Map.class).get("creatorId")).intValue());
+    assertEquals(
+        0,
+        db.queryForObject(
+            "select count(*) from tb_partida where id_organizador<>?", Integer.class, owner));
+    assertEquals(
+        0,
+        db.queryForObject(
+            "select count(*) from information_schema.role_table_grants where table_schema='public'"
+                + " and table_name in ('tb_partida','tb_partida_participante') and grantee in"
+                + " ('anon','authenticated')",
+            Integer.class));
+  }
 }

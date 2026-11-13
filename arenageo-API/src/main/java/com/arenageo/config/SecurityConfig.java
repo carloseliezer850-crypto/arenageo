@@ -45,7 +45,10 @@ public class SecurityConfig {
                         "/conta/redefinir",
                         "/conta/confirmar")
                     .permitAll()
-                    .requestMatchers(HttpMethod.GET, "/esportes", "/niveis")
+                    .requestMatchers(HttpMethod.GET, "/partidas/minhas")
+                    .authenticated()
+                    .requestMatchers(
+                        HttpMethod.GET, "/esportes", "/niveis", "/partidas", "/partidas/{id}")
                     .permitAll()
                     .requestMatchers("/error")
                     .permitAll()

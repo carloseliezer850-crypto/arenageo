@@ -13,3 +13,16 @@
 | Demais rotas do prompt | Ainda não implementadas ou não revisadas neste incremento | Ver fases em VALIDACAO_PLATAFORMA.md |
 
 Não há afirmação de cobertura integral. Os estados de sucesso, erro, loading e recuperação das novas jornadas serão documentados junto de cada implementação real.
+
+## Incremento de partidas
+
+| Rota/ação | Resultado | Cobertura |
+|---|---|---|
+| Home/categorias | GET `/partidas` com cidade/UF/data/modalidade em URL | Rota de busca real; sem filtro fictício |
+| `/partidas` | Busca paginada, filtros, vazio, falha e navegação entre páginas | Backend/contrato; Playwright ampliado |
+| `/criar-partida` | Catálogos reais, gratuita, local informado, fuso, rascunho/publicação, idempotência | Reenvio desconhecido preserva dados/chave |
+| `/partidas/[id]` | Detalhe direto, participar/sair/fila, publicar/cancelar/concluir conforme dono/estado | Testes de concorrência, acesso e versão |
+| `/minhas-partidas` | Organizando/participando/esperando, até 100 recentes | Autenticação exigida; estado vazio/erro |
+| `/painel` | Resumo das partidas e atalhos, preservando busca legada de arenas | Falha de partidas não elimina busca de arenas |
+
+Toda mutação mostra envio, confirmação ou erro; o detalhe é atualizado após ação. Filas exigem confirmação manual e não têm notificação automática. Não há edição/convite privado ou reserva implícita.

@@ -86,17 +86,3 @@ export interface RegisterBusinessRequest {
     openingHours: string;
   };
 }
-
-export interface CriarPartidaRequest {
-  creatorId: number;
-  sportId: number;
-  spaceId: number | null;
-  title: string;
-  description: string;
-  dateTime: string;
-  durationMinutes: number;
-  maxPlayers: number;
-  skillLevelId: number;
-  city: string;
-  visibility: "public" | "private";
-}

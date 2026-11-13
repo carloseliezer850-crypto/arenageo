@@ -92,6 +92,18 @@ public class ApiExceptionHandler {
         HttpStatus.PAYLOAD_TOO_LARGE, "A imagem deve ter até 5 MB.", Map.of(), "IMAGE_TOO_LARGE");
   }
 
+  @ExceptionHandler({
+    org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class,
+    org.springframework.web.bind.MissingRequestHeaderException.class
+  })
+  public ResponseEntity<ErroApiDto> tratarParametro(Exception e) {
+    return resposta(
+        HttpStatus.BAD_REQUEST,
+        "Revise os parâmetros da solicitação.",
+        Map.of(),
+        "REQUEST_INVALID");
+  }
+
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ErroApiDto> tratarErroInterno(Exception exception) {
     LOGGER.error(

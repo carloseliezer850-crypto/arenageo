@@ -39,3 +39,13 @@ E: times, notificações/outbox, comunicação, equipe, avaliações, suporte e 
 F: privacidade, auditoria, acessibilidade completa, desempenho, restauração e testes com pessoas.
 
 Nenhuma cobrança real, merge ou deploy foi realizado neste incremento.
+
+## Incremento de 13/11/2026 — partidas
+
+Implementado núcleo gratuito de partidas (ver REGRAS_PARTIDAS_RESERVAS.md e CONTRATOS_API.md): busca pública paginada, filtros na URL, criação com catálogo e identidade autenticada, rascunho/publicação, detalhe por ID, participação/saída, última vaga concorrente, fila manual ordenada, cancelamento e conclusão pelo organizador, histórico pessoal e resumo no painel. Home e categorias encaminham filtros reais. Migração `20261113124110_partidas_participacao.sql` preparada e testada localmente; não aplicada no Supabase remoto.
+
+A execução anterior do GitHub confirmou build, typecheck, lint, backend e modelo tático, mas falhou antes dos E2E: ubuntu-latest resolveu Ubuntu 26.04, incompatível com Playwright 1.57.0. Runner fixado em ubuntu-24.04, mantendo dependências do app. Logs e relatórios são preservados em falhas.
+
+Backend ampliado para 22 testes, com corrida da última vaga, unicidade/retry, ordem da fila, rollback por choque de agenda, data passada, horário inexistente no fuso, rascunho privado, busca com acentos/UF, autorização de transições, versão, API pública, acesso autenticado ao histórico e idempotência. Jornada Playwright existente ampliada com criação, refresh, busca e histórico de partida; validação de navegador continua dependente do CI.
+
+A fase B ainda é parcial: convites, aprovação, notificações, descoberta de jogadores opt-in e demais itens não estão concluídos. Fases C/E/F e persistência remota do quadro seguem pendentes. Nenhum merge, deploy, cobrança ou migration remota neste incremento.

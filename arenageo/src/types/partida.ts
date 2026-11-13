@@ -2,7 +2,6 @@ export interface Match {
   id: number;
   creatorId: number;
   sportId: number;
-  spaceId: number | null;
   title: string;
   description: string;
   dateTime: string;
@@ -14,8 +13,6 @@ export interface Match {
   visibility: string;
   city: string;
   state: string;
-  latitude: number;
-  longitude: number;
   createdAt: string;
 }
 

@@ -39,6 +39,7 @@ export function MenuNavegacao({ conectado }: { conectado: boolean }) {
       <div className="header-actions">
         {conectado ? <>
           <Link href="/painel">Meu painel</Link>
+          <Link href="/minhas-partidas">Minhas partidas</Link>
           <Link href="/gestao">Minhas arenas</Link>
           <form action={sair}><button className="text-button">Sair</button></form>
         </> : <>
