@@ -122,7 +122,7 @@ test("jogador, perfil, empresa, arena publicada e segunda arena", async ({
   await page
     .getByRole("button", { name: "Salvar configuração", exact: true })
     .click();
-  await expect(page.getByRole("status")).toContainText("Configuração salva");
+  await expect(page.getByText("Configuração salva.", { exact: true })).toBeVisible();
   await page.goto("/painel?cidade=Bag%C3%A9");
   await expect(
     page.getByRole("heading", { name: "Arena E2E", exact: true }),
