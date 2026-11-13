@@ -1,8 +1,8 @@
-# Plataforma — navegação, quadro tático e partidas
+# Plataforma — partidas, reservas e quadros na conta
 
 Data: 12/11/2026. Base `ef02f0c506c449b0319bae8d961b10438198e9ee`; branch `feat/plataforma-completa`.
 
-Esta branch implementa partes das fases A, B e D do prompt. Não representa conclusão da plataforma.
+Esta branch implementa partes das fases A, B, C e D do prompt. Não representa conclusão da plataforma. As seções iniciais registram entregas anteriores; o estado mais recente está nos incrementos de reservas e quadros na conta ao final.
 
 ## Alterações
 
@@ -59,13 +59,15 @@ O E2E identificou que editar perfil sem CEP convertia a ausência em string vazi
 
 Implementado fluxo gratuito para a plataforma, com preço da quadra e pagamento no local: configuração por espaço, agenda, orçamento versionado, confirmação atômica, cancelamento, check-in manual, recebimento local, conclusão/ausência, bloqueios e ICS. Novas telas públicas e privadas ligadas à API. Regras e limitações em REGRAS_PARTIDAS_RESERVAS.md.
 
-28 testes backend aprovados localmente; os cinco novos casos verificam concorrência e constraint direta, adjacência/preparo, idempotência/reuso do orçamento, expiração/versão/preço, autorização, cancelamento, histórico, bloqueio, pagamento e exceções na virada do dia. Typecheck, lint (quatro avisos anteriores) e build aprovados. Jornada E2E ampliada com configuração, orçamento, confirmação, reload, agenda e cancelamento, aguardando CI.
+28 testes backend aprovados localmente; os cinco novos casos verificam concorrência e constraint direta, adjacência/preparo, idempotência/reuso do orçamento, expiração/versão/preço, autorização, cancelamento, histórico, bloqueio, pagamento e exceções na virada do dia. Typecheck, lint (quatro avisos anteriores) e build aprovados. Jornada E2E aprovada com configuração, orçamento, confirmação, reload, agenda e cancelamento no CI 43487371764.
 
-Migration `20261113183256_reservas_agenda_local.sql` criada pelo CLI e testada no PostgreSQL isolado; RLS habilitado e acesso Data API revogado (identidade/autorização pelo backend Spring). Não aplicada ao projeto Supabase remoto. Nenhum merge/deploy/cobrança online.
+Migration `20261113183256_reservas_agenda_local.sql` criada pelo CLI e testada no PostgreSQL isolado; RLS habilitado e acesso Data API revogado (identidade/autorização pelo backend Spring). Não aplicada ao projeto Supabase remoto. Nenhum merge/deploy/cobrança online. Há agora quatro migrations desta branch pendentes no Supabase: identidade estável, partidas, reservas e quadros.
 
 
 ## Quadros na conta — 13/11/2026
 
 Persistência privada, biblioteca, pesquisa, renomeação/cópia, arquivo/exclusão e autosave com revisão otimista. Preserva editor local. Migration `20261113184401_quadros_na_conta.sql` preparada, não aplicada no Supabase remoto.
 
-30 testes backend aprovados localmente, incluindo acesso entre contas, revisão antiga, arquivamento/restauração, exclusão e rejeição de documento inválido preservando o anterior. Typecheck, lint (quatro avisos antigos) e build aprovados. E2E ampliado para abrir o quadro em segunda aba, salvar, detectar conflito na primeira e preservar as duas versões com cópia; em validação no CI.
+30 testes backend aprovados localmente, incluindo acesso entre contas, revisão antiga, arquivamento/restauração, exclusão e rejeição de documento inválido preservando o anterior. Typecheck, lint (quatro avisos antigos) e build aprovados. E2E aprovado para abrir o quadro em segunda aba, salvar, detectar conflito na primeira e preservar as duas versões com cópia. CI [43487533096](https://github.com/carloseliezer850-crypto/arenageo/actions/runs/43487533096), commit `68740eb5bf66afb958c465e27ca255b1c032159b`: 30 testes backend, 4 do modelo, 5 Playwright, typecheck, lint e build aprovados.
+
+Revisão adicional: limite de bloqueio comparado por duração exata (sete dias), resposta 400 para parâmetro obrigatório ausente e 401 para listagem privada sem autenticação. Cobertura adicionada ao teste de operação da arena.

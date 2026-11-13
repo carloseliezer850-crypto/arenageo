@@ -100,7 +100,8 @@ public class ApiExceptionHandler {
 
   @ExceptionHandler({
     org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class,
-    org.springframework.web.bind.MissingRequestHeaderException.class
+    org.springframework.web.bind.MissingRequestHeaderException.class,
+    org.springframework.web.bind.MissingServletRequestParameterException.class
   })
   public ResponseEntity<ErroApiDto> tratarParametro(Exception e) {
     return resposta(

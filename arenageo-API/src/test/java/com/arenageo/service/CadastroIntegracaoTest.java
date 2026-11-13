@@ -798,9 +798,35 @@ class CadastroIntegracaoTest {
   }
 
   @Test
-  void bloqueioEOperacaoDaArenaRespeitamAutorizacaoEEstado() {
+  void bloqueioEOperacaoDaArenaRespeitamAutorizacaoEEstado() throws Exception {
     var f = reservaFixture();
     int customer = contaParticipante("cliente");
+    assertThrows(
+        RegraNegocioException.class,
+        () ->
+            reservas.block(
+                f.owner(),
+                new com.arenageo.dto.reserva.ReservaDtos.Block(
+                    f.space(),
+                    f.start(),
+                    f.start().plusDays(7).plusMinutes(1),
+                    "Intervalo excessivo")));
+    var http = java.net.http.HttpClient.newHttpClient();
+    var missing =
+        java.net.http.HttpRequest.newBuilder(
+                java.net.URI.create(
+                    "http://localhost:" + port + "/espacos/" + f.space() + "/disponibilidade"))
+            .build();
+    assertEquals(
+        400, http.send(missing, java.net.http.HttpResponse.BodyHandlers.ofString()).statusCode());
+    var privateList =
+        java.net.http.HttpRequest.newBuilder(
+                java.net.URI.create("http://localhost:" + port + "/reservas"))
+            .build();
+    assertEquals(
+        401,
+        http.send(privateList, java.net.http.HttpResponse.BodyHandlers.ofString()).statusCode());
+
     var block =
         new com.arenageo.dto.reserva.ReservaDtos.Block(
             f.space(), f.start(), f.start().plusHours(2), "Manutenção do piso");

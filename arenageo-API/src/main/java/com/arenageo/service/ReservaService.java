@@ -453,7 +453,7 @@ public class ReservaService {
     var start = local(b.start(), zone);
     var end = local(b.end(), zone);
     future(start);
-    if (!end.isAfter(start) || Duration.between(start, end).toHours() > 168)
+    if (!end.isAfter(start) || Duration.between(start, end).compareTo(Duration.ofDays(7)) > 0)
       invalid("end", "Informe um intervalo de até 7 dias.");
     if (!occupied(b.spaceId(), start, end).isEmpty())
       conflict("Há reserva ou bloqueio neste intervalo. Resolva o conflito antes de bloquear.");
