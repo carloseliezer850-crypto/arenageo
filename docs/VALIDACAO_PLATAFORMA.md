@@ -1,8 +1,8 @@
-# Plataforma completa — incremento inicial
+# Plataforma — navegação, quadro tático e partidas
 
 Data: 12/11/2026. Base `ef02f0c506c449b0319bae8d961b10438198e9ee`; branch `feat/plataforma-completa`.
 
-Este incremento inicia as fases A e D do prompt. Não representa conclusão da plataforma.
+Esta branch implementa partes das fases A, B e D do prompt. Não representa conclusão da plataforma.
 
 ## Alterações
 
@@ -22,17 +22,17 @@ O Supabase foi consultado somente para confirmar as colunas existentes de `tb_es
 
 ## Validação
 
-- 18 testes backend, incluindo as novas asserções de identidade estável, inativação e ID inválido no teste de publicação.
+- 23 testes backend aprovados localmente, incluindo identidade estável dos espaços, participação concorrente e atualização de perfil sem CEP.
 - 4 testes do modelo tático: limites/formações/presets, transição de modalidade, formação inválida e importação malformada.
 - Typecheck, build Next e lint; lint mantém quatro avisos preexistentes sobre imagens.
-- Três testes Playwright adicionados: menu móvel/Escape, posicionamento por clique/desfazer e redirect comercial. **Não validados localmente**: servidor Next falha com `uv_interface_addresses`; Chromium do Playwright ausente. Não há evidência de teste visual/mobile aprovado.
+- Playwright executado no GitHub Actions: menu móvel/Escape, posicionamento por clique/desfazer e redirect comercial aprovados. A jornada confirmou cadastro, perfil, imagem, empresa e duas arenas após corrigir o CEP opcional; a etapa de partidas está em revalidação após ajustar o seletor do teste. Execução local indisponível: servidor Next falha com `uv_interface_addresses`; Chromium ausente. Não substitui revisão visual e de usabilidade.
 - Workflow executa também a suíte Node do quadro e os novos casos Playwright, com banco descartável.
 - PostgreSQL embarcado dos testes: 14.15. Homologação com PostgreSQL 17 remoto, SMTP real, usabilidade observada e desempenho permanecem pendentes.
 
 ## Próximos incrementos e dependências
 
-A: concluir busca na URL, CTAs restantes, shell e projeções públicas sanitizadas. A sessão do cabeçalho ainda verifica presença do cookie; validação real deve preceder mostrar identidade autenticada.
-B: persistência e APIs de partidas, participação concorrente, convites, espera, descoberta opt-in e painel pessoal.
+A: concluir CTAs restantes, shell e revisão das projeções públicas. Busca de partidas na URL já implementada. A sessão do cabeçalho ainda verifica presença do cookie; validação real deve preceder mostrar identidade autenticada.
+B: núcleo de partidas e painel pessoal implementados; faltam convites, aprovação, notificações, promoção automática da espera e descoberta opt-in.
 C: preços, agenda, reservas e proteção de sobreposição; políticas de cancelamento e pagamentos exigem definição de negócio.
 D: persistência do quadro na conta, biblioteca, conflitos de versão, compartilhamento revogável, cenas e vínculo com elenco. O editor deste incremento salva **somente no navegador/exportação**, não na nuvem.
 E: times, notificações/outbox, comunicação, equipe, avaliações, suporte e pagamento sandbox com fornecedor/recebedor definidos.
@@ -46,6 +46,10 @@ Implementado núcleo gratuito de partidas (ver REGRAS_PARTIDAS_RESERVAS.md e CON
 
 A execução anterior do GitHub confirmou build, typecheck, lint, backend e modelo tático, mas falhou antes dos E2E: ubuntu-latest resolveu Ubuntu 26.04, incompatível com Playwright 1.57.0. Runner fixado em ubuntu-24.04, mantendo dependências do app. Logs e relatórios são preservados em falhas.
 
-Backend ampliado para 22 testes, com corrida da última vaga, unicidade/retry, ordem da fila, rollback por choque de agenda, data passada, horário inexistente no fuso, rascunho privado, busca com acentos/UF, autorização de transições, versão, API pública, acesso autenticado ao histórico e idempotência. Jornada Playwright existente ampliada com criação, refresh, busca e histórico de partida; validação de navegador continua dependente do CI.
+Backend ampliado para 23 testes, com corrida da última vaga, unicidade/retry, ordem da fila, rollback por choque de agenda, data passada, horário inexistente no fuso, rascunho privado, busca com acentos/UF, autorização de transições, versão, API pública, acesso autenticado ao histórico e idempotência. Jornada Playwright existente ampliada com criação, refresh, busca e histórico de partida; revalidação da jornada de navegador em andamento no CI.
 
 A fase B ainda é parcial: convites, aprovação, notificações, descoberta de jogadores opt-in e demais itens não estão concluídos. Fases C/E/F e persistência remota do quadro seguem pendentes. Nenhum merge, deploy, cobrança ou migration remota neste incremento.
+
+## Correção de regressão — CEP opcional
+
+O E2E identificou que editar perfil sem CEP convertia a ausência em string vazia e violava `ck_tb_endereco_nm_cep`. Atualizações de perfil, arena e empresa agora preservam `null` quando o CEP não é informado, mantendo a restrição do banco. O teste de integração cobre ausência, vazio, máscara e remoção de CEP previamente preenchido. Nenhuma alteração de schema necessária para essa correção.
