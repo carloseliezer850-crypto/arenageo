@@ -4,7 +4,8 @@ export default defineConfig({
   workers: 1,
   timeout: 90000,
   use: {
-    baseURL: "http://127.0.0.1:3100",
+    // Match the dev server origin so Next can serve its client scripts.
+    baseURL: "http://localhost:3100",
     headless: true,
     launchOptions: {
       executablePath: process.env.CHROMIUM_EXECUTABLE || undefined,

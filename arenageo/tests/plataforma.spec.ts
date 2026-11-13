@@ -22,7 +22,7 @@ test("quadro posiciona por clique e permite desfazer", async ({ page }) => {
   const field = page.locator('svg').first();
   await field.click({ position: { x: 200, y: 180 } });
   await expect(piece).not.toHaveAttribute("transform", initial!);
-  await page.getByRole("button", { name: "Desfazer", exact: true }).click();
+  await page.getByRole("button", { name: /Desfazer/ }).click();
   await expect(piece).toHaveAttribute("transform", initial!);
 });
 
