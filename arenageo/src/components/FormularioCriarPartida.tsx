@@ -97,10 +97,9 @@ export function FormularioCriarPartida({
           } else {
             setUnknown(r.code === "RESULT_UNKNOWN");
             const name = Object.keys(r.fields)[0];
-            if (name)
-              (
-                formElement.elements.namedItem(name) as HTMLElement | null
-              )?.focus();
+            if (name) requestAnimationFrame(() => {
+              (formElement.elements.namedItem(name) as HTMLElement | null)?.focus();
+            });
           }
         } finally {
           locked.current = false;

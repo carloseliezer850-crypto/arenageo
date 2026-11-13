@@ -145,6 +145,12 @@ test("jogador, perfil, empresa, arena publicada e segunda arena", async ({
   await page
     .locator('[name="description"]')
     .fill("Trazer água e confirmar local com organizador.");
+  await page.locator('[name="title"]').fill("Oi");
+  await page
+    .getByRole("button", { name: "Publicar partida", exact: true })
+    .click();
+  await expect(page.locator('[name="title"]')).toBeFocused();
+  await page.locator('[name="title"]').fill("Partida E2E gratuita");
   await page
     .getByRole("button", { name: "Publicar partida", exact: true })
     .click();
