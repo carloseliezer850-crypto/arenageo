@@ -249,7 +249,7 @@ public class GestaoArenaService {
     var e = enderecos.findByArena_IdArenaAndFlPrincipalTrue(id).orElseThrow();
     e.setNmCidade(d.address().city().trim());
     e.setNmUf(d.address().state());
-    e.setNmCep(com.arenageo.util.DocumentoUtils.somenteDigitos(d.address().zipCode()));
+    e.setNmCep(com.arenageo.util.DocumentoUtils.cepOpcional(d.address().zipCode()));
     e.setNmBairro(d.address().neighborhood());
     e.setNmLogradouro(d.address().street());
     e.setNmNumero(d.address().number());
@@ -389,7 +389,7 @@ public class GestaoArenaService {
         ValidacaoCadastro.telefone(c.businessPhone(), true, "company.businessPhone"));
     e.setNmEmailComercial(c.businessEmail());
     var a = enderecos.findByEmpresa_IdEmpresaAndFlPrincipalTrue(id).orElseThrow();
-    a.setNmCep(com.arenageo.util.DocumentoUtils.somenteDigitos(d.address().zipCode()));
+    a.setNmCep(com.arenageo.util.DocumentoUtils.cepOpcional(d.address().zipCode()));
     a.setNmUf(d.address().state());
     a.setNmCidade(d.address().city());
     a.setNmBairro(d.address().neighborhood());

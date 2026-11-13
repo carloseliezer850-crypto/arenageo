@@ -142,6 +142,27 @@ class CadastroIntegracaoTest {
   }
 
   @Test
+  void editaPerfilComCepOpcionalOuFormatado() {
+    var request = player();
+    var minimal = new EnderecoCadastroDto(null, "RS", "Bagé", null, null, null, null, null, null);
+    var result =
+        jogadores.cadastrar(
+            new CadastroJogadorRequestDto(request.user(), minimal, request.sports()));
+    for (String cep : new String[] {null, "", "96400-000", ""}) {
+      var saved = perfil.ler(result.user().id());
+      var address = new EnderecoCadastroDto(cep, "RS", "Bagé", null, null, null, null, null, null);
+      perfil.salvar(
+          result.user().id(),
+          new PerfilJogadorDto(
+              "Nome atualizado", saved.phone(), address, saved.sports().subList(0, 1)));
+      var reloaded = perfil.ler(result.user().id());
+      assertEquals("Nome atualizado", reloaded.name());
+      assertEquals(1, reloaded.sports().size());
+      assertEquals(cep == null || cep.isEmpty() ? null : "96400000", reloaded.address().zipCode());
+    }
+  }
+
+  @Test
   void invalidoReverteGrafoInteiro() {
     var p = player();
     var invalid =
