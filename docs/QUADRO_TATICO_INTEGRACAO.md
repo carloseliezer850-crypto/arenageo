@@ -1,5 +1,7 @@
 # Integração do quadro
 
+**Banco atualizado em 13/11/2026:** migrations desta branch aplicadas no Supabase, incluindo isolamento da extensão. Histórico e verificações em [APLICACAO_SUPABASE.md](APLICACAO_SUPABASE.md). Menções a migrations pendentes abaixo registram o estado anterior.
+
 Origem: `feat/quadro-tatico` (`7fa77dc02ef155352bc458cce80767fb14643506`). Foram incorporados somente página, editor, modelo, CSS module, testes do modelo e documentação original. Cabeçalho, autenticação e providers atuais foram preservados.
 
 O formato JSON continua na versão original do modelo, com validação de importação e limites de 1 MB/200 desenhos. Não há conversão de HTML legado. O salvamento continua explícito no navegador; importar/restaurar é escolha do usuário. Não há sincronização entre contas/dispositivos neste incremento.

@@ -1,5 +1,7 @@
 # Plataforma — partidas, reservas e quadros na conta
 
+**Banco atualizado em 13/11/2026:** migrations desta branch aplicadas no Supabase, incluindo isolamento da extensão. Histórico e verificações em [APLICACAO_SUPABASE.md](APLICACAO_SUPABASE.md). Menções a migrations pendentes abaixo registram o estado anterior.
+
 Data: 12/11/2026. Base `ef02f0c506c449b0319bae8d961b10438198e9ee`; branch `feat/plataforma-completa`.
 
 Esta branch implementa partes das fases A, B, C e D do prompt. Não representa conclusão da plataforma. As seções iniciais registram entregas anteriores; o estado mais recente está nos incrementos de reservas e quadros na conta ao final.

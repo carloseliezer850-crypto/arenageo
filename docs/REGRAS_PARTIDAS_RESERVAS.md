@@ -1,5 +1,7 @@
 # Partidas — incremento de 13/11/2026
 
+**Banco atualizado em 13/11/2026:** migrations desta branch aplicadas no Supabase, incluindo isolamento da extensão. Histórico e verificações em [APLICACAO_SUPABASE.md](APLICACAO_SUPABASE.md). Menções a migrations pendentes abaixo registram o estado anterior.
+
 ## Implementado
 
 Partida gratuita com local externo informado, cidade/UF, modalidade/nível reais, data/hora completa com zona IANA, duração de 15 a 480 minutos e capacidade total de 2 a 100 participantes. Isso não representa lotação oficial em campo. O organizador vem exclusivamente do principal autenticado e pode optar por ocupar uma vaga.
