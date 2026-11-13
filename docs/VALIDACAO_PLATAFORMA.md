@@ -53,3 +53,12 @@ A fase B ainda é parcial: convites, aprovação, notificações, descoberta de 
 ## Correção de regressão — CEP opcional
 
 O E2E identificou que editar perfil sem CEP convertia a ausência em string vazia e violava `ck_tb_endereco_nm_cep`. Atualizações de perfil, arena e empresa agora preservam `null` quando o CEP não é informado, mantendo a restrição do banco. O teste de integração cobre ausência, vazio, máscara e remoção de CEP previamente preenchido. Nenhuma alteração de schema necessária para essa correção.
+
+
+## Incremento de reservas — 13/11/2026
+
+Implementado fluxo gratuito para a plataforma, com preço da quadra e pagamento no local: configuração por espaço, agenda, orçamento versionado, confirmação atômica, cancelamento, check-in manual, recebimento local, conclusão/ausência, bloqueios e ICS. Novas telas públicas e privadas ligadas à API. Regras e limitações em REGRAS_PARTIDAS_RESERVAS.md.
+
+28 testes backend aprovados localmente; os cinco novos casos verificam concorrência e constraint direta, adjacência/preparo, idempotência/reuso do orçamento, expiração/versão/preço, autorização, cancelamento, histórico, bloqueio, pagamento e exceções na virada do dia. Typecheck, lint (quatro avisos anteriores) e build aprovados. Jornada E2E ampliada com configuração, orçamento, confirmação, reload, agenda e cancelamento, aguardando CI.
+
+Migration `20261113183256_reservas_agenda_local.sql` criada pelo CLI e testada no PostgreSQL isolado; RLS habilitado e acesso Data API revogado (identidade/autorização pelo backend Spring). Não aplicada ao projeto Supabase remoto. Nenhum merge/deploy/cobrança online.

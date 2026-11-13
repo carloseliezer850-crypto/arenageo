@@ -103,6 +103,26 @@ test("jogador, perfil, empresa, arena publicada e segunda arena", async ({
   await expect(page.locator(".cadastro-toast")).toContainText("Arena salva");
   await page.reload();
   await expect(page.locator('[name="spaces[0].name"]')).toHaveValue("Quadra 1");
+  const arenaManagementUrl = page.url();
+  await page
+    .getByRole("link", { name: "Preço e reservas: Quadra 1", exact: true })
+    .click();
+  await page
+    .getByRole("checkbox", {
+      name: "Ativar reservas online confirmadas automaticamente",
+    })
+    .check();
+  await page.getByLabel("Preço por hora (R$)", { exact: true }).fill("120,00");
+  await page
+    .getByLabel("Antecedência para cancelamento online em horas")
+    .fill("24");
+  await page
+    .getByLabel("Condições da reserva")
+    .fill("Pagamento no local. Cancelamento online até 24 horas antes.");
+  await page
+    .getByRole("button", { name: "Salvar configuração", exact: true })
+    .click();
+  await expect(page.getByRole("status")).toContainText("Configuração salva");
   await page.goto("/painel?cidade=Bag%C3%A9");
   await expect(
     page.getByRole("heading", { name: "Arena E2E", exact: true }),
@@ -171,4 +191,64 @@ test("jogador, perfil, empresa, arena publicada e segunda arena", async ({
   await expect(
     page.getByRole("link", { name: "Partida E2E gratuita", exact: true }),
   ).toBeVisible();
+  await page.goto("/arenas?cidade=Bag%C3%A9&uf=RS");
+  await page.getByRole("link", { name: "Arena E2E", exact: true }).click();
+  await page
+    .getByRole("link", { name: "Consultar horários", exact: true })
+    .click();
+  const bookingDay = new Date(Date.now() + 7 * 86400000);
+  while (bookingDay.getUTCDay() !== 1)
+    bookingDay.setUTCDate(bookingDay.getUTCDate() + 1);
+  await page
+    .getByLabel("Data na arena")
+    .fill(bookingDay.toISOString().slice(0, 10));
+  await page
+    .getByRole("button", { name: "Consultar disponibilidade", exact: true })
+    .click();
+  await page.getByLabel("Horário disponível").selectOption({ label: "10:00" });
+  await page
+    .getByRole("button", { name: "Revisar orçamento", exact: true })
+    .click();
+  await expect(page.getByText("Total:", { exact: false })).toContainText(
+    "120,00",
+  );
+  await page
+    .getByRole("checkbox", { name: "Li e aceito o preço e as condições" })
+    .check();
+  await page
+    .getByRole("button", {
+      name: "Confirmar reserva — pagar no local",
+      exact: true,
+    })
+    .click();
+  await expect(page).toHaveURL(/\/reservas\/\d+/);
+  const bookingUrl = page.url();
+  await expect(page.getByText("Protocolo:", { exact: false })).toContainText(
+    "CONFIRMADA",
+  );
+  await page.reload();
+  await expect(
+    page.getByText("Pagamento pendente no local", { exact: false }),
+  ).toBeVisible();
+  await page.goto(
+    arenaManagementUrl +
+      "/agenda?date=" +
+      bookingDay.toISOString().slice(0, 10),
+  );
+  await expect(
+    page.getByRole("link", { name: "Quadra 1", exact: true }),
+  ).toBeVisible();
+  await page.goto(bookingUrl);
+  await page
+    .getByLabel("Motivo", { exact: true })
+    .fill("Cancelamento de teste após revisão");
+  await page
+    .getByRole("checkbox", { name: "Confirmo o cancelamento deste horário" })
+    .check();
+  await page
+    .getByRole("button", { name: "Cancelar reserva", exact: true })
+    .click();
+  await expect(page.getByText("Protocolo:", { exact: false })).toContainText(
+    "CANCELADA",
+  );
 });

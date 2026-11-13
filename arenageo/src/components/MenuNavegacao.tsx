@@ -7,6 +7,7 @@ import { sair } from "@/services/servicoAutenticacao";
 
 const destinos = [
   ["/partidas", "Encontrar partidas"],
+  ["/arenas", "Encontrar quadras"],
   ["/jogadores", "Jogadores"],
   ["/quadro-tatico", "Quadro tático"],
   ["/como-funciona", "Como funciona"],
@@ -40,6 +41,7 @@ export function MenuNavegacao({ conectado }: { conectado: boolean }) {
         {conectado ? <>
           <Link href="/painel">Meu painel</Link>
           <Link href="/minhas-partidas">Minhas partidas</Link>
+          <Link href="/reservas">Minhas reservas</Link>
           <Link href="/gestao">Minhas arenas</Link>
           <form action={sair}><button className="text-button">Sair</button></form>
         </> : <>

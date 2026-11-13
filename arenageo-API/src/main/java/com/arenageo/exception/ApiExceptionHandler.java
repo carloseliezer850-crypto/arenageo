@@ -60,6 +60,12 @@ public class ApiExceptionHandler {
   public ResponseEntity<ErroApiDto> tratarIntegridade(DataIntegrityViolationException exception) {
     Throwable cause = exception;
     while (cause != null) {
+      if (cause instanceof java.sql.SQLException sql && "23P01".equals(sql.getSQLState()))
+        return resposta(
+            HttpStatus.CONFLICT,
+            "Este horário acabou de ser ocupado. Consulte a agenda novamente.",
+            Map.of(),
+            "BOOKING_CONFLICT");
       if (cause instanceof java.sql.SQLException sql && "23505".equals(sql.getSQLState()))
         return resposta(
             HttpStatus.CONFLICT,

@@ -187,6 +187,29 @@ public class GestaoArenaService {
   @Transactional
   public GestaoArenaDto salvar(Integer user, Integer id, GestaoArenaDto d) {
     var a = propria(user, id, true);
+    var current = ler(user, id);
+    var futureSpaces =
+        db.queryForList(
+            "select distinct r.id_espaco from tb_reserva r join tb_espaco s using(id_espaco) where"
+                + " s.id_arena=? and r.nm_status='CONFIRMADA' and"
+                + " r.dt_fim_bloqueio>current_timestamp",
+            Long.class,
+            id);
+    if (!futureSpaces.isEmpty()
+        && (!current.timezone().equals(d.timezone())
+            || !current.hours().equals(d.hours())
+            || !current.exceptions().equals(d.exceptions())
+            || (current.publish() && !d.publish())
+            || !d.spaces().stream()
+                .map(EspacoDto::id)
+                .filter(Objects::nonNull)
+                .toList()
+                .containsAll(futureSpaces)))
+      throw new CadastroDuplicadoException(
+          "FUTURE_BOOKINGS",
+          null,
+          "Existem reservas ou bloqueios futuros. Resolva-os na agenda antes de alterar horários,"
+              + " fuso, publicação ou remover espaços ocupados.");
     validarHorarios(d.hours());
     try {
       ZoneId.of(d.timezone());

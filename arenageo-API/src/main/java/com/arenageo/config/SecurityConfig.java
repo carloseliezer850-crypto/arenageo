@@ -48,7 +48,14 @@ public class SecurityConfig {
                     .requestMatchers(HttpMethod.GET, "/partidas/minhas")
                     .authenticated()
                     .requestMatchers(
-                        HttpMethod.GET, "/esportes", "/niveis", "/partidas", "/partidas/{id}")
+                        HttpMethod.GET,
+                        "/esportes",
+                        "/niveis",
+                        "/partidas",
+                        "/partidas/{id}",
+                        "/arenas",
+                        "/arenas/{id}/espacos",
+                        "/espacos/{id}/disponibilidade")
                     .permitAll()
                     .requestMatchers("/error")
                     .permitAll()

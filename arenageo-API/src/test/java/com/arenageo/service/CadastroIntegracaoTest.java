@@ -444,6 +444,310 @@ class CadastroIntegracaoTest {
         RecursoNaoEncontradoException.class, () -> gestao.lerEmpresa(999, result.idPerfil()));
   }
 
+  @Autowired ReservaService reservas;
+
+  record ReservaFixture(int owner, int arena, long space, java.time.LocalDateTime start) {}
+
+  ReservaFixture reservaFixture() {
+    var u = jogadores.cadastrar(player());
+    empresas.cadastrarNaConta(
+        u.user().id(),
+        new CadastroEmpresaRequestDto.EmpresaDaContaDto(
+            new CadastroEmpresaRequestDto.EmpresaDto(
+                    "Empresa",
+                    "Empresa",
+                    "12ABC34501DE35",
+                    "",
+                    "53999999999",
+                    "reservas@example.test"),
+                address("Bagé"),
+            new CadastroEmpresaRequestDto.ArenaDto(
+                    "Arena", "", null, "53999999999", "arena@example.test", "", "", ""),
+                address("Bagé")));
+    int arena = ((Number) gestao.listar(u.user().id()).getFirst().get("id")).intValue();
+    var current = gestao.ler(u.user().id(), arena);
+    var spaces =
+        List.of(
+            new GestaoArenaDto.EspacoDto(
+                null,
+                "Quadra",
+                List.of(player().sports().getFirst().sportId()),
+                true,
+                "Madeira",
+                10,
+                20.0,
+                40.0));
+    var hours =
+        java.util.stream.IntStream.range(0, 7)
+            .mapToObj(day -> new GestaoArenaDto.HorarioDto(day, 0, 1440))
+            .toList();
+    var saved =
+        gestao.salvar(
+            u.user().id(),
+            arena,
+            new GestaoArenaDto(
+                current.arena(),
+                current.address(),
+                spaces,
+                hours,
+                "America/Sao_Paulo",
+                List.of(),
+                true));
+    long space = saved.spaces().getFirst().id();
+    reservas.saveConfig(
+        u.user().id(),
+        space,
+        new com.arenageo.dto.reserva.ReservaDtos.Config(
+            true, 10000, 60, 0, 24, "Cancelar até 24 horas antes. Pagar no local.", 0));
+    return new ReservaFixture(
+        u.user().id(),
+        arena,
+        space,
+        java.time.LocalDate.now(java.time.ZoneId.of("America/Sao_Paulo"))
+            .plusDays(3)
+            .atTime(18, 0));
+  }
+
+  java.util.UUID quoteId(int user, ReservaFixture f, java.time.LocalDateTime start) {
+    return (java.util.UUID)
+        reservas
+            .quote(user, new com.arenageo.dto.reserva.ReservaDtos.Quote(f.space(), start))
+            .get("quoteId");
+  }
+
+  @Test
+  void reservaUltimoHorarioConcorrenteEConstraintDireta() throws Exception {
+    var f = reservaFixture();
+    int a = contaParticipante("cliente1"), b = contaParticipante("cliente2");
+    var qa = quoteId(a, f, f.start());
+    var qb = quoteId(b, f, f.start());
+    var gate = new java.util.concurrent.CountDownLatch(1);
+    try (var pool = java.util.concurrent.Executors.newFixedThreadPool(2)) {
+      var tasks =
+          List.<java.util.concurrent.Callable<Boolean>>of(
+              () -> {
+                gate.await();
+                try {
+                  reservas.confirm(a, new com.arenageo.dto.reserva.ReservaDtos.Confirm(qa, true));
+                  return true;
+                } catch (CadastroDuplicadoException e) {
+                  return false;
+                }
+              },
+              () -> {
+                gate.await();
+                try {
+                  reservas.confirm(b, new com.arenageo.dto.reserva.ReservaDtos.Confirm(qb, true));
+                  return true;
+                } catch (CadastroDuplicadoException e) {
+                  return false;
+                }
+              });
+      var one = pool.submit(tasks.get(0));
+      var two = pool.submit(tasks.get(1));
+      gate.countDown();
+      assertNotEquals(one.get(), two.get());
+    }
+    assertEquals(1, db.queryForObject("select count(*) from tb_reserva", Integer.class));
+    assertThrows(
+        org.springframework.dao.DataIntegrityViolationException.class,
+        () ->
+            db.update(
+                "insert into"
+                    + " tb_reserva(id_espaco,id_autor,nm_tipo,dt_inicio,dt_fim,dt_fim_bloqueio,nm_fuso,nr_total_centavos,nr_cancelamento_horas,ds_politica,nm_pagamento)"
+                    + " select"
+                    + " id_espaco,id_autor,'BLOQUEIO',dt_inicio,dt_fim,dt_fim_bloqueio,nm_fuso,0,0,'Manutenção','NAO_APLICAVEL'"
+                    + " from tb_reserva limit 1"));
+    var next = quoteId(a, f, f.start().plusHours(1));
+    reservas.confirm(a, new com.arenageo.dto.reserva.ReservaDtos.Confirm(next, true));
+    assertEquals(2, db.queryForObject("select count(*) from tb_reserva", Integer.class));
+  }
+
+  @Test
+  void orcamentoExigeRevisaoEReenvioNaoDuplica() {
+    var f = reservaFixture();
+    var id = quoteId(f.owner(), f, f.start());
+    reservas.saveConfig(
+        f.owner(),
+        f.space(),
+        new com.arenageo.dto.reserva.ReservaDtos.Config(
+            true, 12000, 60, 15, 24, "Condições atualizadas de pagamento local.", 1));
+    assertThrows(
+        CadastroDuplicadoException.class,
+        () ->
+            reservas.confirm(
+                f.owner(), new com.arenageo.dto.reserva.ReservaDtos.Confirm(id, true)));
+    var expired = quoteId(f.owner(), f, f.start());
+    db.update(
+        "update tb_reserva_orcamento set dt_expira=current_timestamp-interval '1 minute' where"
+            + " id_orcamento=?",
+        expired);
+    assertThrows(
+        CadastroDuplicadoException.class,
+        () ->
+            reservas.confirm(
+                f.owner(), new com.arenageo.dto.reserva.ReservaDtos.Confirm(expired, true)));
+    var valid = quoteId(f.owner(), f, f.start());
+    var body = new com.arenageo.dto.reserva.ReservaDtos.Confirm(valid, true);
+    idem.executar(
+        "reserva-chave-teste-123",
+        "Reserva:" + f.owner(),
+        body,
+        () -> reservas.confirm(f.owner(), body));
+    idem.executar(
+        "reserva-chave-teste-123",
+        "Reserva:" + f.owner(),
+        body,
+        () -> {
+          throw new AssertionError("não repetir");
+        });
+    reservas.confirm(f.owner(), body);
+    assertEquals(1, db.queryForObject("select count(*) from tb_reserva", Integer.class));
+    assertThrows(
+        CadastroDuplicadoException.class, () -> quoteId(f.owner(), f, f.start().plusHours(1)));
+    assertEquals(
+        12000, db.queryForObject("select nr_total_centavos from tb_reserva", Integer.class));
+  }
+
+  @Test
+  void reservaPrivadaCancelamentoLiberaAgendaEPreservaHistorico() {
+    var f = reservaFixture();
+    int customer = contaParticipante("cliente"), other = contaParticipante("terceiro");
+    long id =
+        ((Number)
+                reservas
+                    .confirm(
+                        customer,
+                        new com.arenageo.dto.reserva.ReservaDtos.Confirm(
+                            quoteId(customer, f, f.start()), true))
+                    .get("id"))
+            .longValue();
+    assertThrows(RecursoNaoEncontradoException.class, () -> reservas.detail(other, id));
+    assertThrows(
+        RecursoNaoEncontradoException.class,
+        () ->
+            reservas.action(
+                other,
+                id,
+                new com.arenageo.dto.reserva.ReservaDtos.Action("CANCELAR", 0, "Outro cliente")));
+    var current = gestao.ler(f.owner(), f.arena());
+    assertThrows(
+        CadastroDuplicadoException.class,
+        () ->
+            gestao.salvar(
+                f.owner(),
+                f.arena(),
+                new GestaoArenaDto(
+                    current.arena(),
+                    current.address(),
+                    List.of(),
+                    current.hours(),
+                    current.timezone(),
+                    current.exceptions(),
+                    false)));
+    assertThrows(
+        CadastroDuplicadoException.class,
+        () ->
+            reservas.action(
+                customer,
+                id,
+                new com.arenageo.dto.reserva.ReservaDtos.Action(
+                    "CANCELAR", 1, "Não poderei jogar")));
+    var cancelled =
+        reservas.action(
+            customer,
+            id,
+            new com.arenageo.dto.reserva.ReservaDtos.Action("CANCELAR", 0, "Não poderei jogar"));
+    assertEquals("CANCELADA", cancelled.get("status"));
+    quoteId(other, f, f.start());
+    assertEquals(2, db.queryForObject("select count(*) from tb_reserva_evento", Integer.class));
+    assertFalse(
+        Boolean.TRUE.equals(
+            db.queryForObject(
+                "select has_table_privilege('anon','tb_reserva','SELECT') or"
+                    + " has_table_privilege('authenticated','tb_reserva_orcamento','INSERT')",
+                Boolean.class)));
+  }
+
+  @Test
+  void excecaoTemPrioridadeIncluindoViradaDeDia() {
+    var f = reservaFixture();
+    var day = f.start().toLocalDate();
+    db.update("delete from tb_arena_horario where id_arena=?", f.arena());
+    db.update(
+        "insert into tb_arena_horario values (?,?,?,?)",
+        f.arena(),
+        day.minusDays(1).getDayOfWeek().getValue() % 7,
+        1320,
+        1560);
+    quoteId(f.owner(), f, day.atTime(0, 30));
+    db.update("insert into tb_arena_excecao values (?,?,'[]')", f.arena(), day);
+    assertThrows(CadastroDuplicadoException.class, () -> quoteId(f.owner(), f, day.atTime(0, 30)));
+    db.update(
+        "update tb_arena_excecao set ds_periodos='[{\"start\":1380,\"end\":1560}]' where"
+            + " id_arena=?",
+        f.arena());
+    var q =
+        reservas.quote(
+            f.owner(),
+            new com.arenageo.dto.reserva.ReservaDtos.Quote(f.space(), day.atTime(23, 30)));
+    assertEquals(
+        3600,
+        java.time.Duration.between(
+                java.time.Instant.parse((String) q.get("start")),
+                java.time.Instant.parse((String) q.get("end")))
+            .toSeconds());
+    db.update("insert into tb_arena_excecao values (?,?,'[]')", f.arena(), day.plusDays(1));
+    assertThrows(CadastroDuplicadoException.class, () -> quoteId(f.owner(), f, day.atTime(23, 30)));
+  }
+
+  @Test
+  void bloqueioEOperacaoDaArenaRespeitamAutorizacaoEEstado() {
+    var f = reservaFixture();
+    int customer = contaParticipante("cliente");
+    var block =
+        new com.arenageo.dto.reserva.ReservaDtos.Block(
+            f.space(), f.start(), f.start().plusHours(2), "Manutenção do piso");
+    assertThrows(RecursoNaoEncontradoException.class, () -> reservas.block(customer, block));
+    var b = reservas.block(f.owner(), block);
+    assertThrows(CadastroDuplicadoException.class, () -> quoteId(customer, f, f.start()));
+    reservas.action(
+        f.owner(),
+        ((Number) b.get("id")).longValue(),
+        new com.arenageo.dto.reserva.ReservaDtos.Action("CANCELAR", 0, "Manutenção finalizada"));
+    var r =
+        reservas.confirm(
+            customer,
+            new com.arenageo.dto.reserva.ReservaDtos.Confirm(
+                quoteId(customer, f, f.start()), true));
+    long id = ((Number) r.get("id")).longValue();
+    assertThrows(
+        RecursoNaoEncontradoException.class,
+        () ->
+            reservas.action(
+                customer,
+                id,
+                new com.arenageo.dto.reserva.ReservaDtos.Action("RECEBER_LOCAL", 0, null)));
+    assertThrows(
+        CadastroDuplicadoException.class,
+        () ->
+            reservas.action(
+                f.owner(),
+                id,
+                new com.arenageo.dto.reserva.ReservaDtos.Action("CHECKIN", 0, null)));
+    reservas.action(
+        f.owner(), id, new com.arenageo.dto.reserva.ReservaDtos.Action("RECEBER_LOCAL", 0, null));
+    assertThrows(
+        CadastroDuplicadoException.class,
+        () ->
+            reservas.action(
+                f.owner(),
+                id,
+                new com.arenageo.dto.reserva.ReservaDtos.Action(
+                    "CANCELAR", 1, "Cancelar com valor recebido")));
+    assertEquals("RECEBIDO_LOCAL", reservas.detail(customer, id).get("payment"));
+  }
+
   @Autowired PartidaService partidas;
 
   int contaParticipante(String name) {

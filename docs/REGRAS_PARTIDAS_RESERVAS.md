@@ -22,4 +22,20 @@ POST exige Idempotency-Key, com escopo por conta e proteção transacional exist
 
 ## Ainda pendente
 
-Convites privados, aprovação pelo organizador, promoção automática/temporizada, edição/duplicação de rascunho, alteração com reconfirmação, presença e resultado, notificações/outbox, auditoria completa de eventos, elenco público com privacidade, vínculo arena/espaço/reserva, lista privada por membros, calendário e paginação do histórico pessoal além das 100 partidas mais recentes. Reservas e pagamentos continuam não implementados.
+Convites privados, aprovação pelo organizador, promoção automática/temporizada, edição/duplicação de rascunho, alteração com reconfirmação, presença e resultado, notificações/outbox, auditoria completa de eventos, elenco público com privacidade, vínculo arena/espaço/reserva, lista privada por membros, calendário e paginação do histórico pessoal além das 100 partidas mais recentes. Reservas com pagamento local foram implementadas no incremento abaixo. Pagamento online continua pendente.
+
+## Reservas — pagamento no local
+
+Implementado orçamento → revisão → confirmação imediata, sem cobrança online nem hold. A arena ativa explicitamente cada espaço, define tarifa por hora em centavos, duração fixa (30–240 minutos, múltiplos de 15), preparo (0–120 minutos), antecedência de cancelamento e condições. O total é calculado no servidor, proporcional à duração e arredondado para cima ao centavo. Valores e política aceitos são preservados na reserva.
+
+Orçamento vinculado à conta, válido por dez minutos, não ocupa o horário. Confirmação revalida publicação, configuração/versionamento, validade, funcionamento e conflito. Mesmo orçamento não produz outra reserva, mesmo com outra chave; o endpoint também usa Idempotency-Key. Alteração de preço invalida orçamentos anteriores, sem alterar reservas confirmadas.
+
+Reservas e bloqueios compartilham `tb_reserva` e exclusion constraint GiST por espaço e `tstzrange [início,fim+preparo)`. CONFIRMADA, CONCLUIDA e NAO_COMPARECEU preservam a ocupação histórica; CANCELADA libera. Mutex transacional da arena serializa confirmação, alterações de horários, configuração e bloqueios; a constraint é uma segunda proteção independente da API. Espaço multiuso tem uma só agenda. Não há subdivisão pai/filhos.
+
+Horários regulares usam o fuso IANA da arena. Exceção da data substitui o funcionamento regular e corta à meia-noite intervalos herdados do dia anterior. Intervalos que atravessam meia-noite são suportados; horários ambíguos/inexistentes de DST não são oferecidos. Datas reserváveis limitadas aos próximos 180 dias. Indisponibilidade de consulta nunca vira horário livre.
+
+Cliente e responsável consultam detalhe; outras contas recebem 404. Histórico pessoal paginado (20/página). Agenda diária da arena mostra reservas/bloqueios. Responsável cria bloqueio com motivo, sem sobrepor reserva. Alterar fuso, horários, exceções, despublicar ou remover espaço com reserva/bloqueio futuro exige resolver a agenda antes. Preços novos não alteram snapshots existentes.
+
+Cancelamento exige motivo e versão; cliente respeita antecedência definida pela arena, responsável pode resolver exceções. Sem recebimento registrado, não há cobrança/reembolso online. Com RECEBIDO_LOCAL, cancelamento é bloqueado até resolução comercial (fluxo de devolução ainda pendente). Check-in manual do responsável: de 1 hora antes até o fim, uma vez. Conclusão/ausência somente após o fim; ausência incompatível com check-in. Registro de recebimento local é explícito, não integração de pagamento. Eventos preservam autor, ação, motivo e instante. Exportação ICS usa UID estável, SEQUENCE e UTC.
+
+Limitações deste fluxo: tarifa única por espaço, duração fixa, agenda diária/lista, confirmação imediata e pagamento local. Reagendamento, reservas manuais para cliente sem conta, QR, devolução local, regras tarifárias por faixa, pagamentos online/holds, notificações e vínculo entre partida e reserva continuam pendentes. A migration é preparada e testada isoladamente; não aplicada ao Supabase remoto.

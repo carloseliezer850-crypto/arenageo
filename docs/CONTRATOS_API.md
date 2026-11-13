@@ -16,3 +16,16 @@ PartidaRequest: title (5–120), sportId e skillLevelId ativos, description (1�
 Projeções não incluem CPF, e-mail, endereço residencial cadastrado, senha, token ou lista de participantes. Nome público do organizador usa username. Erros preservam status/code/message/fields/traceId. Principais códigos: SEARCH_INVALID, REQUEST_INVALID, MATCH_DATE_INVALID, TIMEZONE_INVALID, CATALOG_ITEM_UNAVAILABLE, MATCH_CLOSED, SCHEDULE_CONFLICT, VERSION_CONFLICT, MATCH_TRANSITION_INVALID, CANCELLATION_REASON_REQUIRED e IDEMPOTENCY_CONFLICT.
 
 O antigo contrato GET `/partidas` array foi substituído por página; frontend e serviços foram atualizados juntos. Local ainda é texto; nenhum spaceId fictício é aceito como reserva.
+
+
+## Reservas e agenda
+
+- GET /arenas?cidade=&uf=; GET /arenas/{id}/espacos; GET /espacos/{id}/disponibilidade?date=YYYY-MM-DD: públicos, apenas arena publicada e espaço ativo; sem dados do reservante.
+- GET/PUT /gestao/espacos/{id}/reservas-config: responsável; `{online,hourlyCents,durationMinutes,preparationMinutes,cancellationHours,policy,version}`.
+- POST /reservas/orcamentos: conta autenticada, `{spaceId,start}`; start é data/hora local da arena. Retorna quoteId, intervalo UTC, fuso, preço, política e validade.
+- POST /reservas: `{quoteId,accepted:true}`, Idempotency-Key obrigatório. CONFIRMADA/PENDENTE_LOCAL; não processa cartão/PIX.
+- GET /reservas?page=0; GET /reservas/{id}: privados. Sem dados cadastrais do cliente nos resultados.
+- GET /gestao/arenas/{id}/agenda?date=YYYY-MM-DD: agenda diária do responsável.
+- POST /gestao/bloqueios: `{spaceId,start,end,reason}`, Idempotency-Key obrigatório; até 7 dias por bloqueio.
+- POST /reservas/{id}/acoes: `{action,version,reason?}`; CANCELAR, CHECKIN, CONCLUIR, FALTA, RECEBER_LOCAL. Autorização e regras no servidor.
+- BOOKING_CONFLICT (409): sobreposição, orçamento desatualizado/expirado, versão antiga ou transição incompatível. BOOKING_INVALID (400): dados inválidos. FUTURE_BOOKINGS (409): edição de arena incompatível com compromissos futuros.
