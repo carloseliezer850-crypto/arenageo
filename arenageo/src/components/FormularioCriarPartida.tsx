@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { criarPartida } from "@/services/servicoPartida";
 import { useToast } from "./ToastProvider";
@@ -39,6 +39,13 @@ export function FormularioCriarPartida({
     locked = useRef(false),
     previous = useRef("");
   const [unknown, setUnknown] = useState(false);
+  const form = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    if (busy || unknown) return;
+    const name = Object.keys(errors)[0];
+    if (name)
+      (form.current?.elements.namedItem(name) as HTMLElement | null)?.focus();
+  }, [busy, errors, unknown]);
   function update<K extends keyof NovaPartida>(name: K, value: NovaPartida[K]) {
     setBody((v) => ({ ...v, [name]: value }));
   }
@@ -74,10 +81,10 @@ export function FormularioCriarPartida({
   );
   return (
     <form
+      ref={form}
       className="form-card"
       onSubmit={async (e) => {
         e.preventDefault();
-        const formElement = e.currentTarget;
         if (locked.current) return;
         locked.current = true;
         setBusy(true);
@@ -96,10 +103,6 @@ export function FormularioCriarPartida({
             router.refresh();
           } else {
             setUnknown(r.code === "RESULT_UNKNOWN");
-            const name = Object.keys(r.fields)[0];
-            if (name) requestAnimationFrame(() => {
-              (formElement.elements.namedItem(name) as HTMLElement | null)?.focus();
-            });
           }
         } finally {
           locked.current = false;
