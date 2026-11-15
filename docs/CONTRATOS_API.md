@@ -40,3 +40,15 @@ O antigo contrato GET `/partidas` array foi substituído por página; frontend e
 - PATCH /quadros/{uuid}: `{revision,archived}`; arquiva/restaura com controle de versão.
 - DELETE /quadros/{uuid}?revision=: exclusão do próprio quadro, com revisão.
 - BOARD_INVALID (400): documento inválido. BOARD_LIMIT (400): 100 quadros atingidos. Recursos de outra conta retornam 404.
+
+
+## Convites e notificações internas
+
+- GET /notificacoes?page=0: 20 avisos da conta por página, mais contagem de não lidos.
+- PUT /notificacoes/{id}/lida: marcação idempotente, somente pelo destinatário.
+- GET /convites: até 100 convites recentes recebidos.
+- GET/POST /partidas/{id}/convites: somente organizador; POST `{username}` exato, jogador ativo. Até 20 novos convites por hora por organizador; único por partida/destinatário. Reenvio retorna o existente, inclusive após recusa/revogação.
+- POST /convites/{id}/resposta: `{action: ACEITAR|RECUSAR|REVOGAR}`. Destinatário aceita/recusa; organizador revoga pendente. Mesma resposta pode ser repetida. Aceitação chama participação com as mesmas travas, limites e fila, sem prioridade adicional. Conflito de agenda reverte a resposta.
+- Partida encerrada/data vencida impede resposta. Convite pendente vencido é apresentado como EXPIRADO; cancelamento/conclusão revoga pendentes e avisa os afetados.
+
+Notificações persistidas na mesma transação do evento, com chave única por usuário/evento. Avisos de convite, resposta, participação, vez na fila, cancelamento/conclusão e operações de reserva. Sem e-mail, SMS, push, job externo ou promoção automática. Destinos limitados a partidas/reservas; abrir o recurso revalida a autorização atual. A caixa é atualizada ao carregar/atualizar a página.

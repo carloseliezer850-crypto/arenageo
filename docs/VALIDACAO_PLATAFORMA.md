@@ -73,3 +73,10 @@ Persistência privada, biblioteca, pesquisa, renomeação/cópia, arquivo/exclus
 30 testes backend aprovados localmente, incluindo acesso entre contas, revisão antiga, arquivamento/restauração, exclusão e rejeição de documento inválido preservando o anterior. Typecheck, lint (quatro avisos antigos) e build aprovados. E2E aprovado para abrir o quadro em segunda aba, salvar, detectar conflito na primeira e preservar as duas versões com cópia. CI [43487533096](https://github.com/carloseliezer850-crypto/arenageo/actions/runs/43487533096), commit `68740eb5bf66afb958c465e27ca255b1c032159b`: 30 testes backend, 4 do modelo, 5 Playwright, typecheck, lint e build aprovados.
 
 Revisão adicional: limite de bloqueio comparado por duração exata (sete dias), resposta 400 para parâmetro obrigatório ausente e 401 para listagem privada sem autenticação. Cobertura adicionada ao teste de operação da arena.
+
+
+## Convites e notificações — 15/11/2026
+
+Caixa privada de notificações com leitura e paginação; convites por username pelo organizador, resposta/revogação, proteção contra repetição e limite por hora. Aceitar respeita vagas, fila e agenda. Avisos transacionais ligados a reservas/partidas. Nenhum canal externo foi ativado.
+
+33 testes backend aprovados localmente, incluindo isolamento entre contas, deduplicação, leitura idempotente, convite repetido, aceitação com partida cheia, aviso ao primeiro da fila, revogação e cancelamento. Typecheck, lint e build aprovados. E2E ampliado com leitura do aviso de reserva e envio/aceitação de convite entre duas contas, aguardando CI. Migration `20261115170926_convites_notificacoes.sql` preparada para aplicação após validação.

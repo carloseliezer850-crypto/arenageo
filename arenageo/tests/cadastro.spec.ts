@@ -177,6 +177,7 @@ test("jogador, perfil, empresa, arena publicada e segunda arena", async ({
     .getByRole("button", { name: "Publicar partida", exact: true })
     .click();
   await expect(page).toHaveURL(/\/partidas\/\d+/);
+  const matchUrl = page.url();
   await expect(
     page.getByRole("heading", { name: "Partida E2E gratuita", exact: true }),
   ).toBeVisible();
@@ -305,4 +306,78 @@ test("jogador, perfil, empresa, arena publicada e segunda arena", async ({
     }),
   ).toBeVisible();
   await otherTab.close();
+  await page.goto("/notificacoes");
+  await expect(
+    page.getByRole("heading", { name: "Reserva confirmada", exact: true }),
+  ).toBeVisible();
+  const notice = page.locator("article").filter({
+    has: page.getByRole("heading", {
+      name: "Reserva confirmada",
+      exact: true,
+    }),
+  });
+  await notice
+    .getByRole("button", { name: "Marcar como lida", exact: true })
+    .click();
+  await expect(notice.getByText("Lida", { exact: false })).toBeVisible();
+
+  // Create an isolated guest fixture through the real API; the invitation journey uses the UI.
+  const sportsResponse = await page.request.get(
+    "http://localhost:8088/esportes",
+  );
+  const levelsResponse = await page.request.get("http://localhost:8088/niveis");
+  const guestResponse = await page.request.post(
+    "http://localhost:8088/jogadores",
+    {
+      data: {
+        user: {
+          name: "Convidado E2E",
+          username: "e2e.convidado",
+          email: "convite@example.test",
+          cpf: "11144477735",
+          password: "frase de senha convidado",
+        },
+        address: { state: "RS", city: "Bagé" },
+        sports: [
+          {
+            sportId: (await sportsResponse.json())[0].id,
+            skillLevelId: (await levelsResponse.json())[0].id,
+          },
+        ],
+      },
+    },
+  );
+  expect(guestResponse.ok()).toBe(true);
+  const guest = await guestResponse.json();
+  await page.goto(matchUrl);
+  await page
+    .getByLabel("Nome de usuário", { exact: true })
+    .fill("e2e.convidado");
+  await page
+    .getByRole("button", { name: "Enviar convite", exact: true })
+    .click();
+  await expect(
+    page.getByText("e2e.convidado — PENDENTE", { exact: false }),
+  ).toBeVisible();
+  const guestContext = await page.context().browser()!.newContext();
+  await guestContext.addCookies([
+    {
+      name: "arenageo_sessao",
+      value: guest.token,
+      url: "http://localhost:3100",
+      httpOnly: true,
+      sameSite: "Lax",
+    },
+  ]);
+  const guestPage = await guestContext.newPage();
+  await guestPage.goto("/notificacoes");
+  await guestPage
+    .getByRole("button", { name: "Aceitar convite", exact: true })
+    .click();
+  await expect(guestPage.getByText("ACEITO", { exact: true })).toBeVisible();
+  await guestPage.goto(matchUrl);
+  await expect(
+    guestPage.getByText("Sua participação: CONFIRMADA", { exact: true }),
+  ).toBeVisible();
+  await guestContext.close();
 });

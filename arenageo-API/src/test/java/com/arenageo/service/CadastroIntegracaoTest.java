@@ -444,6 +444,113 @@ class CadastroIntegracaoTest {
         RecursoNaoEncontradoException.class, () -> gestao.lerEmpresa(999, result.idPerfil()));
   }
 
+  @Autowired ConviteService convites;
+  @Autowired NotificacaoService avisos;
+
+  int jogadorConvidado(String username) {
+    int user = contaParticipante(username);
+    int person =
+        db.queryForObject(
+            "insert into tb_pessoa(id_usuario,nm_completo,nm_cpf,nm_nome_usuario) values (?,?,?,?)"
+                + " returning id_pessoa",
+            Integer.class,
+            user,
+            username,
+            String.format("%011d", user),
+            username);
+    db.update("insert into tb_jogador(id_pessoa,fl_ativo) values (?,true)", person);
+    return user;
+  }
+
+  @Test
+  void conviteRespeitaFilaReenvioEPermissoes() {
+    int owner = jogadores.cadastrar(player()).user().id();
+    long match = ((Number) partidas.criar(owner, novaPartida(true, true)).get("id")).longValue();
+    int invited = jogadorConvidado("convidado"), other = jogadorConvidado("outro");
+    partidas.participar(match, other, false);
+    convites.convidar(owner, match, "convidado");
+    convites.convidar(owner, match, "convidado");
+    long id = db.queryForObject("select id_convite from tb_partida_convite", Long.class);
+    assertEquals(1, db.queryForObject("select count(*) from tb_partida_convite", Integer.class));
+    assertEquals(
+        1,
+        db.queryForObject(
+            "select count(*) from tb_notificacao where id_usuario=?", Integer.class, invited));
+    assertThrows(
+        RecursoNaoEncontradoException.class, () -> convites.responder(other, id, "ACEITAR"));
+    convites.responder(invited, id, "ACEITAR");
+    convites.responder(invited, id, "ACEITAR");
+    assertEquals("LISTA_ESPERA", partidas.detalhe(match, invited).get("participation"));
+    assertEquals(
+        2,
+        db.queryForObject(
+            "select count(*) from tb_partida_participante where nm_status='CONFIRMADA'",
+            Integer.class));
+    partidas.participar(match, other, true);
+    partidas.participar(match, other, true);
+    assertEquals(
+        1,
+        db.queryForObject(
+            "select count(*) from tb_notificacao where id_usuario=? and nm_titulo='Vaga disponível"
+                + " para confirmar'",
+            Integer.class,
+            invited));
+    partidas.participar(match, invited, false);
+    assertEquals("CONFIRMADA", partidas.detalhe(match, invited).get("participation"));
+  }
+
+  @Test
+  void conviteRevogadoOuExpiradoNaoAdmiteParticipacao() {
+    int owner = jogadores.cadastrar(player()).user().id();
+    long match = ((Number) partidas.criar(owner, novaPartida(true, false)).get("id")).longValue();
+    int recipient = jogadorConvidado("destino");
+    assertThrows(
+        RecursoNaoEncontradoException.class,
+        () -> convites.convidar(recipient, match, "jogador.teste"));
+    convites.convidar(owner, match, "destino");
+    long id = db.queryForObject("select id_convite from tb_partida_convite", Long.class);
+    convites.responder(owner, id, "REVOGAR");
+    assertThrows(
+        CadastroDuplicadoException.class, () -> convites.responder(recipient, id, "ACEITAR"));
+    assertEquals(
+        0, db.queryForObject("select count(*) from tb_partida_participante", Integer.class));
+    long other = ((Number) partidas.criar(owner, novaPartida(true, false)).get("id")).longValue();
+    convites.convidar(owner, other, "destino");
+    long next =
+        db.queryForObject(
+            "select id_convite from tb_partida_convite where id_partida=?", Long.class, other);
+    partidas.transicao(other, owner, "CANCELADA", 0, "Partida cancelada pelo organizador");
+    assertThrows(
+        CadastroDuplicadoException.class, () -> convites.responder(recipient, next, "ACEITAR"));
+    assertEquals(
+        1,
+        db.queryForObject(
+            "select count(*) from tb_notificacao where id_usuario=? and nm_titulo='Partida"
+                + " cancelada'",
+            Integer.class,
+            recipient));
+  }
+
+  @Test
+  void notificacoesSaoPrivadasDeduplicadasELidasPorDono() {
+    int owner = jogadores.cadastrar(player()).user().id(), other = contaParticipante("sem-acesso");
+    avisos.emitir(owner, "evento-teste", "Teste", "Mensagem", "/partidas/1");
+    avisos.emitir(owner, "evento-teste", "Teste", "Mensagem", "/partidas/1");
+    long id = db.queryForObject("select id_notificacao from tb_notificacao", Long.class);
+    assertEquals(1L, avisos.listar(owner, 0).get("unread"));
+    assertEquals(0L, avisos.listar(other, 0).get("unread"));
+    assertThrows(RecursoNaoEncontradoException.class, () -> avisos.ler(other, id));
+    avisos.ler(owner, id);
+    avisos.ler(owner, id);
+    assertEquals(0L, avisos.listar(owner, 0).get("unread"));
+    assertFalse(
+        Boolean.TRUE.equals(
+            db.queryForObject(
+                "select has_table_privilege('anon','tb_notificacao','SELECT') or"
+                    + " has_table_privilege('authenticated','tb_partida_convite','INSERT')",
+                Boolean.class)));
+  }
+
   @Autowired QuadroService quadros;
 
   tools.jackson.databind.JsonNode quadroValido() {

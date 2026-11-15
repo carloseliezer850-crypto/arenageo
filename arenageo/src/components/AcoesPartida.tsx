@@ -53,7 +53,8 @@ export function AcoesPartida({
       {match.participation === "LISTA_ESPERA" && (
         <p>
           Posição na fila: {match.queuePosition}. A confirmação é manual, por
-          ordem de entrada. Não há promoção ou aviso automático nesta etapa.
+          ordem de entrada. Você recebe uma notificação no site quando houver
+          vaga e chegar sua vez; confirme aqui. Não há promoção automática.
         </p>
       )}
       {open && (

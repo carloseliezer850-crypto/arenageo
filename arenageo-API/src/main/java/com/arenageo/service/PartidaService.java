@@ -11,8 +11,10 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class PartidaService {
   private final JdbcTemplate db;
+  private final NotificacaoService avisos;
 
-  public PartidaService(JdbcTemplate db) {
+  public PartidaService(JdbcTemplate db, NotificacaoService avisos) {
+    this.avisos = avisos;
     this.db = db;
   }
 
@@ -57,7 +59,9 @@ public class PartidaService {
   @Transactional(readOnly = true)
   public Map<String, Object> buscar(
       String city, String state, Integer sport, Integer level, LocalDate date, int page, int size) {
-    if ((sport != null && sport <= 0) || (level != null && level <= 0) || page < 0
+    if ((sport != null && sport <= 0)
+        || (level != null && level <= 0)
+        || page < 0
         || page > 10000
         || size < 1
         || size > 50
@@ -265,6 +269,7 @@ public class PartidaService {
             id,
             user);
     if (sair) {
+      if (old.isEmpty() || "CANCELADA".equals(old.getFirst())) return detalhe(id, user);
       db.update(
           "update tb_partida_participante set nm_status='CANCELADA' where id_partida=? and"
               + " id_usuario=?",
@@ -298,6 +303,41 @@ public class PartidaService {
           id,
           user,
           status);
+      avisos.emitir(
+          user,
+          "participacao:" + UUID.randomUUID(),
+          status.equals("CONFIRMADA") ? "Participação confirmada" : "Entrada na lista de espera",
+          (String) row.get("nm_titulo"),
+          "/partidas/" + id);
+    }
+    if (sair) {
+      avisos.emitir(
+          user,
+          "saida:" + UUID.randomUUID(),
+          "Saída da partida registrada",
+          (String) row.get("nm_titulo"),
+          "/partidas/" + id);
+      var next =
+          db.queryForList(
+              "select id_usuario from tb_partida_participante where id_partida=? and"
+                  + " nm_status='LISTA_ESPERA' order by dt_entrada,id_usuario limit 1",
+              Integer.class,
+              id);
+      int confirmed =
+          db.queryForObject(
+              "select count(*) from tb_partida_participante where id_partida=? and"
+                  + " nm_status='CONFIRMADA'",
+              Integer.class,
+              id);
+      if (!next.isEmpty() && confirmed < ((Number) row.get("nr_capacidade")).intValue())
+        avisos.emitir(
+            next.getFirst(),
+            "vaga:" + UUID.randomUUID(),
+            "Vaga disponível para confirmar",
+            "Chegou sua vez em "
+                + row.get("nm_titulo")
+                + ". Abra a partida para tentar confirmar a vaga.",
+            "/partidas/" + id);
     }
     return detalhe(id, user);
   }
@@ -341,6 +381,27 @@ public class PartidaService {
         action,
         reason,
         id);
+    if (action.equals("CANCELADA") || action.equals("CONCLUIDA")) {
+      var recipients =
+          db.queryForList(
+              "select id_usuario from tb_partida_participante where id_partida=? and"
+                  + " nm_status<>'CANCELADA' union select id_destinatario from tb_partida_convite"
+                  + " where id_partida=? and nm_status='PENDENTE'",
+              Integer.class,
+              id,
+              id);
+      for (int recipient : recipients)
+        avisos.emitir(
+            recipient,
+            "partida:" + id + ":" + action + ":" + (version + 1),
+            action.equals("CANCELADA") ? "Partida cancelada" : "Partida concluída",
+            (String) row.get("nm_titulo"),
+            "/partidas/" + id);
+      db.update(
+          "update tb_partida_convite set nm_status='REVOGADO',dt_resposta=current_timestamp where"
+              + " id_partida=? and nm_status='PENDENTE'",
+          id);
+    }
     return detalhe(id, user);
   }
 }

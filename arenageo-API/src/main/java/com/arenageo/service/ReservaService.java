@@ -14,8 +14,10 @@ import tools.jackson.databind.ObjectMapper;
 public class ReservaService {
   private final JdbcTemplate db;
   private final ObjectMapper json;
+  private final NotificacaoService avisos;
 
-  public ReservaService(JdbcTemplate db, ObjectMapper json) {
+  public ReservaService(JdbcTemplate db, ObjectMapper json, NotificacaoService avisos) {
+    this.avisos = avisos;
     this.db = db;
     this.json = json;
   }
@@ -372,6 +374,31 @@ public class ReservaService {
   }
 
   private void event(long id, int user, String action, String reason) {
+    var booking = one(BOOK + " where r.id_reserva=?", id);
+    String title =
+        switch (action) {
+          case "CRIAR" -> "Reserva confirmada";
+          case "CANCELAR" -> "Reserva cancelada";
+          case "CHECKIN" -> "Check-in registrado";
+          case "RECEBER_LOCAL" -> "Recebimento local registrado";
+          case "CONCLUIR" -> "Reserva concluída";
+          case "FALTA" -> "Ausência registrada pela arena";
+          default -> "Agenda atualizada";
+        };
+    Set<Integer> recipients = new HashSet<>();
+    recipients.add(number(booking, "owner"));
+    if (booking.get("customer") != null) recipients.add(number(booking, "customer"));
+    for (int recipient : recipients)
+      avisos.emitir(
+          recipient,
+          "reserva:" + id + ":" + action + ":" + booking.get("version"),
+          title,
+          booking.get("space")
+              + " — "
+              + booking.get("arena")
+              + ". Consulte os detalhes e as condições.",
+          "/reservas/" + id);
+
     db.update(
         "insert into tb_reserva_evento(id_reserva,id_autor,nm_acao,ds_motivo) values (?,?,?,?)",
         id,

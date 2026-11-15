@@ -1,3 +1,4 @@
+import { ConvidarPartida } from "@/components/Comunicacao";
 import { notFound } from "next/navigation";
 import { ErroApi } from "@/api/cliente";
 import { Cabecalho } from "@/components/Cabecalho";
@@ -59,6 +60,9 @@ export default async function MatchDetailPage({
             />
           </aside>
         </div>
+        {match.canManage && match.accepting && (
+          <ConvidarPartida id={match.id} />
+        )}
       </PaginaRota>
       <Rodape />
     </div>
