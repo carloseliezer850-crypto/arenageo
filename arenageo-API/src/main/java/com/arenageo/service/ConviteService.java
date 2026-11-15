@@ -46,7 +46,7 @@ public class ConviteService {
         db.queryForList(
             "select p.id_usuario from tb_pessoa p join tb_usuario u using(id_usuario) join"
                 + " tb_jogador j using(id_pessoa) where lower(p.nm_nome_usuario)=lower(?) and"
-                + " u.fl_ativo",
+                + " u.fl_ativo and j.fl_ativo",
             Integer.class,
             username.trim());
     if (users.size() != 1 || users.getFirst() == user)

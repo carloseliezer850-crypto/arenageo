@@ -468,6 +468,15 @@ class CadastroIntegracaoTest {
     long match = ((Number) partidas.criar(owner, novaPartida(true, true)).get("id")).longValue();
     int invited = jogadorConvidado("convidado"), other = jogadorConvidado("outro");
     partidas.participar(match, other, false);
+    db.update(
+        "update tb_jogador set fl_ativo=false where id_pessoa=(select id_pessoa from tb_pessoa"
+            + " where id_usuario=?)",
+        invited);
+    assertThrows(RegraNegocioException.class, () -> convites.convidar(owner, match, "convidado"));
+    db.update(
+        "update tb_jogador set fl_ativo=true where id_pessoa=(select id_pessoa from tb_pessoa where"
+            + " id_usuario=?)",
+        invited);
     convites.convidar(owner, match, "convidado");
     convites.convidar(owner, match, "convidado");
     long id = db.queryForObject("select id_convite from tb_partida_convite", Long.class);

@@ -319,7 +319,7 @@ test("jogador, perfil, empresa, arena publicada e segunda arena", async ({
   await notice
     .getByRole("button", { name: "Marcar como lida", exact: true })
     .click();
-  await expect(notice.getByText("Lida", { exact: false })).toBeVisible();
+  await expect(notice.getByText(/· Lida$/)).toBeVisible();
 
   // Create an isolated guest fixture through the real API; the invitation journey uses the UI.
   const sportsResponse = await page.request.get(
