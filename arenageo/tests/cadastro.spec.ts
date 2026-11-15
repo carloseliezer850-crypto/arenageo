@@ -359,7 +359,9 @@ test("jogador, perfil, empresa, arena publicada e segunda arena", async ({
   await expect(
     page.getByText("e2e.convidado — PENDENTE", { exact: false }),
   ).toBeVisible();
-  const guestContext = await page.context().browser()!.newContext();
+  const guestContext = await page.context().browser()!.newContext({
+    baseURL: new URL(page.url()).origin,
+  });
   await guestContext.addCookies([
     {
       name: "arenageo_sessao",
