@@ -86,3 +86,7 @@ Caixa privada de notificações com leitura e paginação; convites por username
 As seções anteriores registram o histórico de cada incremento. O estado atual do banco e o mapeamento das migrations estão em APLICACAO_SUPABASE.md: todas as migrations desta branch foram aplicadas. Partidas, reservas com pagamento local, quadros privados na conta, convites e notificações internas estão implementados. Não houve merge ou deploy.
 
 Continuam pendentes: aprovação/descoberta opt-in, promoção automática da fila, preferências/bloqueio de convites e canais externos; times/chat; reserva manual, reagendamento e regras avançadas de tarifa; pagamento online; compartilhamento/cenas/elenco no quadro; avaliações, suporte e demais requisitos de privacidade, acessibilidade e desempenho. A fila atual exige confirmação manual e os avisos exigem atualização da página.
+
+## Compartilhamento do quadro — 16/11/2026
+
+Implementado link revogável, somente leitura, válido por sete dias, com cópia da revisão salva e nomes ocultos por padrão. Testes adicionados para propriedade, versão antiga, snapshot, ocultação de nomes, token armazenado como hash, expiração, rotação, revogação repetida, arquivamento/restauração, exclusão e leitura HTTP pública sem permissão de escrita. E2E ampliado com visitante sem sessão e revogação após abrir o campo. Validação final e aplicação remota pendentes neste registro inicial.

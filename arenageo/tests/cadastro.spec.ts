@@ -305,6 +305,43 @@ test("jogador, perfil, empresa, arena publicada e segunda arena", async ({
       exact: true,
     }),
   ).toBeVisible();
+
+  // Share the saved board with an anonymous viewer, then revoke access.
+  await otherTab
+    .getByRole("button", { name: "Gerar link de leitura", exact: true })
+    .click();
+  const shareLink = otherTab.getByLabel("Link de leitura", { exact: true });
+  await expect(shareLink).toBeVisible();
+  const publicUrl = await shareLink.inputValue();
+  const publicContext = await page.context().browser()!.newContext();
+  const publicPage = await publicContext.newPage();
+  await publicPage.goto(publicUrl);
+  await expect(
+    publicPage.getByRole("heading", {
+      name: "Treino E2E revisado",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(publicPage.getByRole("img", { name: /Campo de/ })).toBeVisible();
+  await expect(
+    publicPage.getByRole("button", { name: "Salvar na conta", exact: true }),
+  ).toHaveCount(0);
+  await otherTab
+    .getByRole("button", { name: "Revogar link de leitura", exact: true })
+    .click();
+  await expect(
+    otherTab.getByText("Link revogado.", { exact: false }),
+  ).toBeVisible();
+  await publicPage.reload();
+  await expect(
+    publicPage.getByText("Este compartilhamento não está disponível.", {
+      exact: false,
+    }),
+  ).toBeVisible();
+  await expect(publicPage.getByRole("img", { name: /Campo de/ })).toHaveCount(
+    0,
+  );
+  await publicContext.close();
   await otherTab.close();
   await page.goto("/notificacoes");
   await expect(
@@ -359,9 +396,12 @@ test("jogador, perfil, empresa, arena publicada e segunda arena", async ({
   await expect(
     page.getByText("e2e.convidado — PENDENTE", { exact: false }),
   ).toBeVisible();
-  const guestContext = await page.context().browser()!.newContext({
-    baseURL: new URL(page.url()).origin,
-  });
+  const guestContext = await page
+    .context()
+    .browser()!
+    .newContext({
+      baseURL: new URL(page.url()).origin,
+    });
   await guestContext.addCookies([
     {
       name: "arenageo_sessao",

@@ -561,6 +561,99 @@ class CadastroIntegracaoTest {
   }
 
   @Autowired QuadroService quadros;
+  @Autowired CompartilhamentoQuadroService compartilhamento;
+
+  @Test
+  void compartilhamentoOcultaNomesCongelaVersaoERestringeAcesso() throws Exception {
+    var user = jogadores.cadastrar(player()).user().id();
+    var other = contaParticipante("outro-share");
+    var id = UUID.randomUUID();
+    var doc = quadroValido();
+    ((tools.jackson.databind.node.ObjectNode) doc.get("jogadores").get(0))
+        .put("nome", "Nome privado");
+    quadros.save(user, id, "Treino original", doc, 0, true);
+    assertThrows(
+        RecursoNaoEncontradoException.class, () -> compartilhamento.create(other, id, 0, true));
+    assertThrows(RecursoNaoEncontradoException.class, () -> compartilhamento.revoke(other, id));
+    assertThrows(RecursoNaoEncontradoException.class, () -> compartilhamento.status(other, id));
+    var created = (Map<?, ?>) compartilhamento.create(user, id, 0, false);
+    String token = (String) created.get("token");
+    assertEquals(43, token.length());
+    String persisted =
+        db.queryForObject(
+            "select nm_token_hash from tb_quadro_compartilhamento where id_quadro=?",
+            String.class,
+            id);
+    assertNotEquals(token, persisted);
+    assertEquals(64, persisted.length());
+    var shared = (Map<?, ?>) compartilhamento.read(token);
+    assertFalse(shared.get("document").toString().contains("Nome privado"));
+    assertEquals(Set.of("title", "document", "revision", "expires"), shared.keySet());
+    assertTrue(quadros.read(user, id).get("document").toString().contains("Nome privado"));
+    quadros.save(user, id, "Versão secreta posterior", doc, 0, false);
+    assertEquals("Treino original", ((Map<?, ?>) compartilhamento.read(token)).get("title"));
+    assertThrows(
+        CadastroDuplicadoException.class, () -> compartilhamento.create(user, id, 0, true));
+    var http = java.net.http.HttpClient.newHttpClient();
+    var uri = java.net.URI.create("http://localhost:" + port + "/quadros-compartilhados/" + token);
+    var response =
+        http.send(
+            java.net.http.HttpRequest.newBuilder(uri).GET().build(),
+            java.net.http.HttpResponse.BodyHandlers.ofString());
+    assertEquals(200, response.statusCode());
+    assertTrue(response.headers().firstValue("Cache-Control").orElse("").contains("no-store"));
+    assertFalse(response.body().contains("Nome privado"));
+    assertEquals(
+        401,
+        http.send(
+                java.net.http.HttpRequest.newBuilder(uri)
+                    .PUT(java.net.http.HttpRequest.BodyPublishers.ofString("{}"))
+                    .build(),
+                java.net.http.HttpResponse.BodyHandlers.ofString())
+            .statusCode());
+    var rotated = (Map<?, ?>) compartilhamento.create(user, id, 1, true);
+    assertThrows(RecursoNaoEncontradoException.class, () -> compartilhamento.read(token));
+    String next = (String) rotated.get("token");
+    assertTrue(
+        ((Map<?, ?>) compartilhamento.read(next))
+            .get("document")
+            .toString()
+            .contains("Nome privado"));
+    compartilhamento.revoke(user, id);
+    compartilhamento.revoke(user, id);
+    assertThrows(RecursoNaoEncontradoException.class, () -> compartilhamento.read(next));
+    assertFalse((Boolean) ((Map<?, ?>) compartilhamento.status(user, id)).get("active"));
+  }
+
+  @Test
+  void compartilhamentoExpiraEArquivamentoNaoRessuscitaLink() {
+    var user = jogadores.cadastrar(player()).user().id();
+    var id = UUID.randomUUID();
+    quadros.save(user, id, "Treino", quadroValido(), 0, true);
+    String token = (String) ((Map<?, ?>) compartilhamento.create(user, id, 0, false)).get("token");
+    db.update(
+        "update tb_quadro_compartilhamento set dt_expira=current_timestamp-interval '1 second'"
+            + " where id_quadro=?",
+        id);
+    assertThrows(RecursoNaoEncontradoException.class, () -> compartilhamento.read(token));
+    assertThrows(RecursoNaoEncontradoException.class, () -> compartilhamento.read("invalido"));
+    String active = (String) ((Map<?, ?>) compartilhamento.create(user, id, 0, false)).get("token");
+    quadros.archive(user, id, 0, true);
+    assertThrows(RecursoNaoEncontradoException.class, () -> compartilhamento.read(active));
+    assertThrows(
+        CadastroDuplicadoException.class, () -> compartilhamento.create(user, id, 1, false));
+    quadros.archive(user, id, 1, false);
+    assertThrows(RecursoNaoEncontradoException.class, () -> compartilhamento.read(active));
+    String last = (String) ((Map<?, ?>) compartilhamento.create(user, id, 2, false)).get("token");
+    quadros.delete(user, id, 2);
+    assertThrows(RecursoNaoEncontradoException.class, () -> compartilhamento.read(last));
+    assertFalse(
+        Boolean.TRUE.equals(
+            db.queryForObject(
+                "select has_table_privilege('anon','tb_quadro_compartilhamento','SELECT') or"
+                    + " has_table_privilege('authenticated','tb_quadro_compartilhamento','INSERT')",
+                Boolean.class)));
+  }
 
   tools.jackson.databind.JsonNode quadroValido() {
     var mapper = new tools.jackson.databind.ObjectMapper();

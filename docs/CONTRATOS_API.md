@@ -52,3 +52,12 @@ O antigo contrato GET `/partidas` array foi substituído por página; frontend e
 - Partida encerrada/data vencida impede resposta. Convite pendente vencido é apresentado como EXPIRADO; cancelamento/conclusão revoga pendentes e avisa os afetados.
 
 Notificações persistidas na mesma transação do evento, com chave única por usuário/evento. Avisos de convite, resposta, participação, vez na fila, cancelamento/conclusão e operações de reserva. Sem e-mail, SMS, push, job externo ou promoção automática. Destinos limitados a partidas/reservas; abrir o recurso revalida a autorização atual. A caixa é atualizada ao carregar/atualizar a página.
+
+## Compartilhamento de quadro — 16/11/2026
+
+- `GET /quadros/{id}/compartilhamento`: dono consulta existência/validade/revisão e opção de nomes; não retorna token.
+- `POST /quadros/{id}/compartilhamento` com `{revision,names}`: dono publica uma cópia da versão salva, substituindo qualquer link anterior. Exige revisão atual e quadro não arquivado. `names` omitido/false remove nomes no servidor. Retorna token aleatório (32 bytes), validade de sete dias e revisão. Token original não é armazenado; somente SHA-256.
+- `DELETE /quadros/{id}/compartilhamento`: revogação idempotente pelo dono, HTTP 204.
+- `GET /quadros-compartilhados/{token}`: público, apenas leitura, retorna título/documento/revisão/validade; sem ID da conta, dados cadastrais ou acesso de escrita. Valida token, expiração, quadro ativo e conta ativa em cada consulta; inexistente/expirado/revogado retorna 404 genérico. `Cache-Control: no-store`, `Referrer-Policy: no-referrer`, `X-Robots-Tag: noindex, nofollow`.
+
+Um link por quadro, snapshot independente de alterações posteriores. Arquivar remove o link e restaurar não o reativa. Excluir remove por FK cascade. A interface explica que o título é divulgado e permite optar por divulgar nomes; qualquer pessoa com o link poderá ler. Revogação impede novas consultas, mas não apaga cópias já obtidas. Criar novamente após resposta desconhecida substitui a tentativa anterior. O token não dá acesso a endpoints privados.

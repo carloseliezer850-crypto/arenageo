@@ -20,3 +20,9 @@ O servidor valida o JSON: versão, modalidade/perfil, formações e limites por 
 Autosave de 1,5 segundo após mudança e fora de gesto ativo; só começa depois de salvar/abrir um quadro na conta. Falha não é apresentada como sincronização concluída. Salvar no navegador, exportar JSON/PNG e histórico local permanecem disponíveis e independentes. Abrir outro quadro pede confirmação quando o editor diverge do último salvo. Aviso de saída do navegador quando há quadro remoto modificado.
 
 Ainda pendentes: tags/miniaturas, cenas, vínculo com partida/elenco, compartilhamento revogável, importação compatível de formatos externos, modos visuais adicionais e colaboração em tempo real. Os quadros neste incremento são estritamente privados; não há link público.
+
+## Compartilhamento somente leitura — 16/11/2026
+
+No quadro salvo da conta, o dono pode gerar link válido por sete dias, copiar o endereço exibido e revogá-lo. Nomes dos jogadores ficam ocultos por padrão, com opção explícita para incluí-los. Título e desenho da versão salva são compartilhados. Alterações futuras do editor não mudam a cópia publicada; gerar novo link publica a revisão atual e invalida o antigo.
+
+A rota `/quadro-compartilhado/[token]` usa o mesmo desenho do campo em modo somente leitura, sem ferramentas ou mutações. Não grava rascunho no navegador e não exige login. Página sem indexação e com política de referência restrita; API sem cache. Revogação/expiração/arquivamento/exclusão/conta inativa impedem novas leituras. Não há compartilhamento com edição, membros, cenas ou associação a elenco neste incremento.

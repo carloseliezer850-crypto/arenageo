@@ -84,3 +84,27 @@ export async function excluirQuadro(id: string, revision: number) {
     "DELETE",
   );
 }
+
+export async function compartilharQuadro(
+  id: string,
+  revision: number,
+  names: boolean,
+) {
+  return action<{ token: string; expires: string; revision: number }>(
+    `/quadros/${encodeURIComponent(id)}/compartilhamento`,
+    "POST",
+    { revision, names },
+  );
+}
+export async function revogarCompartilhamento(id: string) {
+  return action<void>(
+    `/quadros/${encodeURIComponent(id)}/compartilhamento`,
+    "DELETE",
+  );
+}
+export async function estadoCompartilhamento(id: string) {
+  return action<{
+    active: boolean;
+    share?: { expires: string; revision: number; names: boolean };
+  }>(`/quadros/${encodeURIComponent(id)}/compartilhamento`, "GET");
+}

@@ -49,6 +49,7 @@ public class SecurityConfig {
                     .authenticated()
                     .requestMatchers(
                         HttpMethod.GET,
+                        "/quadros-compartilhados/{token}",
                         "/esportes",
                         "/niveis",
                         "/partidas",

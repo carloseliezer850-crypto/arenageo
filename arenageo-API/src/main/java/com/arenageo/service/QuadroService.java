@@ -200,6 +200,7 @@ public class QuadroService {
         != 1)
       throw new CadastroDuplicadoException(
           "BOARD_VERSION_CONFLICT", null, "O quadro mudou. Atualize a biblioteca.");
+    if (archived) db.update("delete from tb_quadro_compartilhamento where id_quadro=?", id);
   }
 
   @Transactional

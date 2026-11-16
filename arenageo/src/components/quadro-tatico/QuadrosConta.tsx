@@ -10,6 +10,7 @@ import {
   type ResumoQuadro,
 } from "@/services/servicoQuadro";
 import { importarQuadro, type Quadro } from "./modelo";
+import { CompartilharQuadro } from "./CompartilharQuadro";
 type Pending = {
   id: string | null;
   title: string;
@@ -226,8 +227,9 @@ export function QuadrosConta({
     <section className="form-card">
       <h2>Meus quadros na conta</h2>
       <p>
-        Privados: somente sua conta pode ler e editar. Até 100 quadros,
-        incluindo arquivados. O salvamento no navegador continua independente.
+        Privados por padrão; links de leitura dependem da sua autorização. Até
+        100 quadros, incluindo arquivados. O salvamento no navegador continua
+        independente.
       </p>
       <label className="field">
         Título do quadro
@@ -271,6 +273,14 @@ export function QuadrosConta({
             ? "Alterações ainda não sincronizadas."
             : message}
       </p>
+      {current && (
+        <CompartilharQuadro
+          key={current.id}
+          id={current.id}
+          revision={current.revision}
+          disabled={busy || dirty || gesture || paused}
+        />
+      )}
       <form
         onSubmit={(e) => {
           e.preventDefault();

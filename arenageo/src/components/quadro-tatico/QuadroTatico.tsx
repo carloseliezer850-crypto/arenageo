@@ -31,9 +31,17 @@ type Arraste = {
 const EQUIPES = ["Azul", "Laranja"];
 const CHAVE = "arenageo-quadro-tatico-v1";
 
-export function QuadroTatico({ connected = false }: { connected?: boolean }) {
+export function QuadroTatico({
+  connected = false,
+  initial,
+  readOnly = false,
+}: {
+  connected?: boolean;
+  initial?: Quadro;
+  readOnly?: boolean;
+}) {
   const [gesture, setGesture] = useState(false);
-  const [quadro, setQuadro] = useState<Quadro>(() => criarQuadro());
+  const [quadro, setQuadro] = useState<Quadro>(() => initial ?? criarQuadro());
   const [selecionado, selecionar] = useState<string | null>(null);
   const [ferramenta, setFerramenta] = useState<Ferramenta>("mover");
   const [previa, setPrevia] = useState<Marcacao | null>(null);
@@ -380,6 +388,195 @@ export function QuadroTatico({ connected = false }: { connected?: boolean }) {
   const bola = projetar(quadro.bola);
   const escala = largura / perfil.comprimento;
   const centro = h / 2;
+  const campo = (
+    <div className={styles.campo}>
+      <svg
+        ref={svg}
+        viewBox={`0 0 960 ${h}`}
+        role={readOnly ? "img" : "group"}
+        aria-label={`Campo de ${MODALIDADES[quadro.modalidade].nome}, ${perfil.limite} jogadores por equipe`}
+        onPointerDown={readOnly ? undefined : iniciar}
+        onPointerMove={readOnly ? undefined : mover}
+        onPointerUp={readOnly ? undefined : (e) => terminar(e)}
+        onPointerCancel={readOnly ? undefined : (e) => terminar(e, true)}
+        onLostPointerCapture={(e) => {
+          if (arraste.current) terminar(e, true);
+        }}
+      >
+        <rect width="960" height={h} fill="#1c7050" />
+        {Array.from({ length: 4 }, (_, i) => (
+          <rect
+            key={i}
+            x={20 + i * 230}
+            y="20"
+            width="115"
+            height={altura}
+            fill="#fff"
+            opacity=".055"
+          />
+        ))}
+        <g stroke="#effff1" strokeWidth="2.4" fill="none" opacity=".85">
+          <rect x="20" y="20" width={largura} height={altura} />
+          <path d={`M480 20V${altura + 20}`} />
+          {quadro.modalidade !== "society" && (
+            <circle
+              cx="480"
+              cy={centro}
+              r={(quadro.modalidade === "futsal" ? 3 : 9.15) * escala}
+            />
+          )}
+          {([0, 1] as const).map((lado) => (
+            <g
+              key={lado}
+              transform={lado ? "translate(960 0) scale(-1 1)" : undefined}
+            >
+              {quadro.modalidade === "futsal" ? (
+                <>
+                  <path
+                    d={`M20 ${centro - 7.5 * escala} a${6 * escala} ${6 * escala} 0 0 1 ${6 * escala} ${6 * escala} v${3 * escala} a${6 * escala} ${6 * escala} 0 0 1 ${-6 * escala} ${6 * escala}`}
+                  />
+                  <circle cx={20 + 6 * escala} cy={centro} r="3" fill="#fff" />
+                  <circle cx={20 + 10 * escala} cy={centro} r="3" fill="#fff" />
+                </>
+              ) : quadro.modalidade === "society" ? (
+                <>
+                  <rect
+                    x="20"
+                    y={centro - 7.5 * escala}
+                    width={8 * escala}
+                    height={15 * escala}
+                  />
+                  <path
+                    d={`M${480 - 5 * escala} ${centro - 2.5 * escala} v${5 * escala}`}
+                  />
+                  <circle cx={20 + 8 * escala} cy={centro} r="3" fill="#fff" />
+                </>
+              ) : (
+                <>
+                  <rect
+                    x="20"
+                    y={centro - 20.16 * escala}
+                    width={16.5 * escala}
+                    height={40.32 * escala}
+                  />
+                  <rect
+                    x="20"
+                    y={centro - 9.16 * escala}
+                    width={5.5 * escala}
+                    height={18.32 * escala}
+                  />
+                  <circle cx={20 + 11 * escala} cy={centro} r="3" fill="#fff" />
+                </>
+              )}
+              <path
+                d={`M20 ${centro - (quadro.modalidade === "futsal" ? 1.5 : quadro.modalidade === "society" ? 2.5 : 3.66) * escala} H6 V${centro + (quadro.modalidade === "futsal" ? 1.5 : quadro.modalidade === "society" ? 2.5 : 3.66) * escala} H20`}
+              />
+            </g>
+          ))}
+          <circle cx="480" cy={centro} r="3" fill="#fff" />
+        </g>
+        {quadro.marcacoes.map((m) => (
+          <g key={m.id} data-marca={m.id}>
+            {desenhar(m)}
+          </g>
+        ))}
+        {quadro.jogadores
+          .filter((p) => p.lado === 0 || quadro.adversario)
+          .map((p) => {
+            const pos = projetar(p);
+            return (
+              <g
+                key={p.id}
+                data-peca={p.id}
+                transform={`translate(${pos.x} ${pos.y})`}
+                tabIndex={readOnly ? undefined : 0}
+                role={readOnly ? undefined : "button"}
+                aria-label={`${EQUIPES[p.lado]}, camisa ${p.numero}${p.id.endsWith("-0") ? ", goleiro" : ""}${p.nome ? ", " + p.nome : ""}`}
+                onFocus={readOnly ? undefined : () => selecionar(p.id)}
+                onKeyDown={readOnly ? undefined : (e) => teclado(e, p.id)}
+              >
+                {selecionado === p.id && (
+                  <circle
+                    data-selecao="true"
+                    r="25"
+                    fill="none"
+                    stroke="#ffe98c"
+                    strokeWidth="3"
+                  />
+                )}
+                <circle
+                  r="19"
+                  fill={p.lado ? "#ec7527" : "#327aef"}
+                  stroke="#fff"
+                  strokeWidth="2.5"
+                />
+                <text
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  fill="#fff"
+                  fontSize="17"
+                  fontWeight="800"
+                  fontFamily="system-ui"
+                  pointerEvents="none"
+                >
+                  {p.numero}
+                </text>
+                {p.nome && (
+                  <text
+                    y="34"
+                    textAnchor="middle"
+                    fill="#fff"
+                    stroke="#11442f"
+                    strokeWidth="3"
+                    paintOrder="stroke"
+                    fontFamily="system-ui"
+                    fontSize="12"
+                    pointerEvents="none"
+                  >
+                    {p.nome}
+                  </text>
+                )}
+              </g>
+            );
+          })}
+        <g
+          data-peca="bola"
+          transform={`translate(${bola.x} ${bola.y})`}
+          tabIndex={readOnly ? undefined : 0}
+          role={readOnly ? undefined : "button"}
+          aria-label="Bola"
+          onFocus={readOnly ? undefined : () => selecionar("bola")}
+          onKeyDown={readOnly ? undefined : (e) => teclado(e, "bola")}
+        >
+          {selecionado === "bola" && (
+            <circle
+              data-selecao="true"
+              r="16"
+              fill="none"
+              stroke="#ffe98c"
+              strokeWidth="3"
+            />
+          )}
+          <circle r="11" fill="#fff" stroke="#28403f" strokeWidth="1.5" />
+          <path d="M0 -6 L6 -1 L4 5 L-4 5 L-6 -1Z" fill="#28373a" />
+        </g>
+        {previa && (
+          <g opacity=".6" pointerEvents="none">
+            {desenhar(previa)}
+          </g>
+        )}
+      </svg>
+    </div>
+  );
+  if (readOnly)
+    return (
+      <section
+        className={styles.quadro}
+        aria-label="Quadro compartilhado somente leitura"
+      >
+        {campo}
+      </section>
+    );
   return (
     <section className={styles.quadro} aria-label="Editor de quadro tático">
       <div className={styles.topo}>
@@ -540,204 +737,7 @@ export function QuadroTatico({ connected = false }: { connected?: boolean }) {
           Reiniciar posições
         </button>
       </div>
-      <div className={styles.campo}>
-        <svg
-          ref={svg}
-          viewBox={`0 0 960 ${h}`}
-          role="group"
-          aria-label={`Campo de ${MODALIDADES[quadro.modalidade].nome}, ${perfil.limite} jogadores por equipe`}
-          onPointerDown={iniciar}
-          onPointerMove={mover}
-          onPointerUp={(e) => terminar(e)}
-          onPointerCancel={(e) => terminar(e, true)}
-          onLostPointerCapture={(e) => {
-            if (arraste.current) terminar(e, true);
-          }}
-        >
-          <rect width="960" height={h} fill="#1c7050" />
-          {Array.from({ length: 4 }, (_, i) => (
-            <rect
-              key={i}
-              x={20 + i * 230}
-              y="20"
-              width="115"
-              height={altura}
-              fill="#fff"
-              opacity=".055"
-            />
-          ))}
-          <g stroke="#effff1" strokeWidth="2.4" fill="none" opacity=".85">
-            <rect x="20" y="20" width={largura} height={altura} />
-            <path d={`M480 20V${altura + 20}`} />
-            {quadro.modalidade !== "society" && (
-              <circle
-                cx="480"
-                cy={centro}
-                r={(quadro.modalidade === "futsal" ? 3 : 9.15) * escala}
-              />
-            )}
-            {([0, 1] as const).map((lado) => (
-              <g
-                key={lado}
-                transform={lado ? "translate(960 0) scale(-1 1)" : undefined}
-              >
-                {quadro.modalidade === "futsal" ? (
-                  <>
-                    <path
-                      d={`M20 ${centro - 7.5 * escala} a${6 * escala} ${6 * escala} 0 0 1 ${6 * escala} ${6 * escala} v${3 * escala} a${6 * escala} ${6 * escala} 0 0 1 ${-6 * escala} ${6 * escala}`}
-                    />
-                    <circle
-                      cx={20 + 6 * escala}
-                      cy={centro}
-                      r="3"
-                      fill="#fff"
-                    />
-                    <circle
-                      cx={20 + 10 * escala}
-                      cy={centro}
-                      r="3"
-                      fill="#fff"
-                    />
-                  </>
-                ) : quadro.modalidade === "society" ? (
-                  <>
-                    <rect
-                      x="20"
-                      y={centro - 7.5 * escala}
-                      width={8 * escala}
-                      height={15 * escala}
-                    />
-                    <path
-                      d={`M${480 - 5 * escala} ${centro - 2.5 * escala} v${5 * escala}`}
-                    />
-                    <circle
-                      cx={20 + 8 * escala}
-                      cy={centro}
-                      r="3"
-                      fill="#fff"
-                    />
-                  </>
-                ) : (
-                  <>
-                    <rect
-                      x="20"
-                      y={centro - 20.16 * escala}
-                      width={16.5 * escala}
-                      height={40.32 * escala}
-                    />
-                    <rect
-                      x="20"
-                      y={centro - 9.16 * escala}
-                      width={5.5 * escala}
-                      height={18.32 * escala}
-                    />
-                    <circle
-                      cx={20 + 11 * escala}
-                      cy={centro}
-                      r="3"
-                      fill="#fff"
-                    />
-                  </>
-                )}
-                <path
-                  d={`M20 ${centro - (quadro.modalidade === "futsal" ? 1.5 : quadro.modalidade === "society" ? 2.5 : 3.66) * escala} H6 V${centro + (quadro.modalidade === "futsal" ? 1.5 : quadro.modalidade === "society" ? 2.5 : 3.66) * escala} H20`}
-                />
-              </g>
-            ))}
-            <circle cx="480" cy={centro} r="3" fill="#fff" />
-          </g>
-          {quadro.marcacoes.map((m) => (
-            <g key={m.id} data-marca={m.id}>
-              {desenhar(m)}
-            </g>
-          ))}
-          {quadro.jogadores
-            .filter((p) => p.lado === 0 || quadro.adversario)
-            .map((p) => {
-              const pos = projetar(p);
-              return (
-                <g
-                  key={p.id}
-                  data-peca={p.id}
-                  transform={`translate(${pos.x} ${pos.y})`}
-                  tabIndex={0}
-                  role="button"
-                  aria-label={`${EQUIPES[p.lado]}, camisa ${p.numero}${p.id.endsWith("-0") ? ", goleiro" : ""}${p.nome ? ", " + p.nome : ""}`}
-                  onFocus={() => selecionar(p.id)}
-                  onKeyDown={(e) => teclado(e, p.id)}
-                >
-                  {selecionado === p.id && (
-                    <circle
-                      data-selecao="true"
-                      r="25"
-                      fill="none"
-                      stroke="#ffe98c"
-                      strokeWidth="3"
-                    />
-                  )}
-                  <circle
-                    r="19"
-                    fill={p.lado ? "#ec7527" : "#327aef"}
-                    stroke="#fff"
-                    strokeWidth="2.5"
-                  />
-                  <text
-                    textAnchor="middle"
-                    dominantBaseline="central"
-                    fill="#fff"
-                    fontSize="17"
-                    fontWeight="800"
-                    fontFamily="system-ui"
-                    pointerEvents="none"
-                  >
-                    {p.numero}
-                  </text>
-                  {p.nome && (
-                    <text
-                      y="34"
-                      textAnchor="middle"
-                      fill="#fff"
-                      stroke="#11442f"
-                      strokeWidth="3"
-                      paintOrder="stroke"
-                      fontFamily="system-ui"
-                      fontSize="12"
-                      pointerEvents="none"
-                    >
-                      {p.nome}
-                    </text>
-                  )}
-                </g>
-              );
-            })}
-          <g
-            data-peca="bola"
-            transform={`translate(${bola.x} ${bola.y})`}
-            tabIndex={0}
-            role="button"
-            aria-label="Bola"
-            onFocus={() => selecionar("bola")}
-            onKeyDown={(e) => teclado(e, "bola")}
-          >
-            {selecionado === "bola" && (
-              <circle
-                data-selecao="true"
-                r="16"
-                fill="none"
-                stroke="#ffe98c"
-                strokeWidth="3"
-              />
-            )}
-            <circle r="11" fill="#fff" stroke="#28403f" strokeWidth="1.5" />
-            <path d="M0 -6 L6 -1 L4 5 L-4 5 L-6 -1Z" fill="#28373a" />
-          </g>
-          {previa && (
-            <g opacity=".6" pointerEvents="none">
-              {desenhar(previa)}
-            </g>
-          )}
-        </svg>
-      </div>
+      {campo}
       <div className={styles.barra}>
         <strong>
           {jogador
