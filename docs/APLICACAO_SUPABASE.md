@@ -1,4 +1,4 @@
-# Aplicação no Supabase — atualizado em 15/11/2026
+# Aplicação no Supabase — atualizado em 16/11/2026
 
 Projeto ArenaGeo: `uxvhscoqmttkffrmmkvn`. Aplicação autorizada pelo usuário e concluída em 13/11/2026, aproximadamente 16h12–16h14 (America/Sao_Paulo).
 
@@ -14,6 +14,7 @@ O conector gera a versão remota no instante da aplicação. Os arquivos de orig
 | 20261113184401 | quadros_na_conta | 20261113191258 |
 | 20261113191348 | isolar_extensao_btree_gist | 20261113191412 |
 | 20261115170926 | convites_notificacoes | 20261115172454 |
+| 20261116182624 | quadro_compartilhamento | 20261116183451 |
 
 As quatro primeiras migrations foram aplicadas sem alteração do SQL já testado. O verificador apontou `btree_gist` em `public`; a quinta migration moveu a extensão para `extensions`, preservando a restrição de exclusão existente. As tabelas anteriores e os dados de clientes não foram excluídos ou substituídos.
 
@@ -38,3 +39,9 @@ Migration aplicada após aprovação do [CI 43740689330](https://github.com/carl
 `tb_notificacao` e `tb_partida_convite` presentes, com RLS habilitado e nenhum privilégio SELECT/INSERT/UPDATE/DELETE/TRUNCATE para anon/authenticated. Histórico remoto conferido. Advisor de segurança sem ERROR/WARN; 26 informações de RLS sem policies, compatíveis com a autorização exclusiva pela API Spring. Nenhum convite ou notificação de teste foi criado no banco remoto.
 
 Os avisos são internos ao site; não há e-mail, push ou atualização em tempo real. A aplicação precisa executar o código desta branch para usar os novos recursos.
+
+## Compartilhamento do quadro — 16/11/2026
+
+Migration `quadro_compartilhamento` aplicada após aprovação do [CI 43929749765](https://github.com/carloseliezer850-crypto/arenageo/actions/runs/43929749765), commit `7f405d6d2ebc396588f5992dcbfaa45c0e1f8657`. Verificados histórico remoto, tabela `tb_quadro_compartilhamento`, RLS ativo e ausência de privilégios SELECT/INSERT/UPDATE/DELETE/TRUNCATE para anon/authenticated. Advisor de segurança sem ERROR/WARN, apenas 27 informações de RLS sem policies (acesso exclusivo pela API Spring). Nenhum quadro ou link de cliente foi publicado durante a aplicação.
+
+35 testes backend, 4 do modelo tático e 5 Playwright aprovados, além de typecheck, lint e build. O teste no navegador abre um link em sessão anônima, verifica a ausência dos controles de edição, revoga pelo dono e confirma a indisponibilidade ao atualizar. Banco atualizado; aplicação ainda depende da versão da branch, sem merge/deploy.
