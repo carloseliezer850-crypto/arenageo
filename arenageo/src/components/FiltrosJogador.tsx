@@ -20,9 +20,9 @@ export function FiltrosJogador({
         Cidade
         <input name="city" maxLength={120} defaultValue={values.city} />
       </label>
-      <label className="field">
-        UF
-        <select name="state" defaultValue={values.state}>
+      <div className="field">
+        <label htmlFor="discovery-state">UF</label>
+        <select id="discovery-state" name="state" defaultValue={values.state}>
           <option value="">Todas</option>
           {"AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO"
             .split(" ")
@@ -30,10 +30,10 @@ export function FiltrosJogador({
               <option key={s}>{s}</option>
             ))}
         </select>
-      </label>
-      <label className="field">
-        Esporte
-        <select name="sport" defaultValue={values.sport}>
+      </div>
+      <div className="field">
+        <label htmlFor="discovery-sport">Esporte</label>
+        <select id="discovery-sport" name="sport" defaultValue={values.sport}>
           <option value="">Todos</option>
           {sports.map((s) => (
             <option key={s.id} value={s.id}>
@@ -41,10 +41,10 @@ export function FiltrosJogador({
             </option>
           ))}
         </select>
-      </label>
-      <label className="field">
-        Nível no esporte
-        <select name="level" defaultValue={values.level}>
+      </div>
+      <div className="field">
+        <label htmlFor="discovery-level">Nível no esporte</label>
+        <select id="discovery-level" name="level" defaultValue={values.level}>
           <option value="">Todos</option>
           {levels.map((s) => (
             <option key={s.id} value={s.id}>
@@ -52,21 +52,25 @@ export function FiltrosJogador({
             </option>
           ))}
         </select>
-      </label>
+      </div>
       <label className="field">
         Data disponível
         <input name="date" type="date" defaultValue={values.date} />
       </label>
-      <label className="field">
-        Período
-        <select name="period" defaultValue={values.period}>
+      <div className="field">
+        <label htmlFor="discovery-period">Período</label>
+        <select
+          id="discovery-period"
+          name="period"
+          defaultValue={values.period}
+        >
           <option value="">Qualquer</option>
           <option value="madrugada">00h–06h</option>
           <option value="manha">06h–12h</option>
           <option value="tarde">12h–18h</option>
           <option value="noite">18h–24h</option>
         </select>
-      </label>
+      </div>
       <p>
         Escolha esporte ao filtrar nível, e data ao filtrar período. Horários no
         fuso declarado pelo jogador; ordem alfabética. Nenhuma distância é
