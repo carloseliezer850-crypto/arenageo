@@ -6,17 +6,15 @@ test("descoberta é voluntária, filtros persistem e cookie forjado não autenti
   const fakeClaims = Buffer.from(
     JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 3600 }),
   ).toString("base64url");
-  await page
-    .context()
-    .addCookies([
-      {
-        name: "arenageo_sessao",
-        value: `invalid.${fakeClaims}.invalid`,
-        url: "http://localhost:3100",
-        httpOnly: true,
-        sameSite: "Lax",
-      },
-    ]);
+  await page.context().addCookies([
+    {
+      name: "arenageo_sessao",
+      value: `invalid.${fakeClaims}.invalid`,
+      url: "http://localhost:3100",
+      httpOnly: true,
+      sameSite: "Lax",
+    },
+  ]);
   await page.goto("/");
   await expect(
     page.getByRole("link", { name: "Meu painel", exact: true }),
@@ -45,17 +43,15 @@ test("descoberta é voluntária, filtros persistem e cookie forjado não autenti
   });
   expect(response.ok()).toBeTruthy();
   const auth = await response.json();
-  await page
-    .context()
-    .addCookies([
-      {
-        name: "arenageo_sessao",
-        value: auth.token,
-        url: "http://localhost:3100",
-        httpOnly: true,
-        sameSite: "Lax",
-      },
-    ]);
+  await page.context().addCookies([
+    {
+      name: "arenageo_sessao",
+      value: auth.token,
+      url: "http://localhost:3100",
+      httpOnly: true,
+      sameSite: "Lax",
+    },
+  ]);
   await page.goto("/perfil/descoberta");
   await expect(
     page.getByLabel("Quero aparecer na busca de jogadores"),
@@ -108,7 +104,18 @@ test("descoberta é voluntária, filtros persistem e cookie forjado não autenti
   await expect(
     page.getByRole("button", { name: "Salvar descoberta", exact: true }),
   ).toBeEnabled();
-  const gone = await viewer.goto(detail);
-  expect(gone?.status()).toBe(404);
+  const publicPath = new URL(detail).pathname;
+  await expect
+    .poll(async () =>
+      (await viewer.request.get("http://localhost:8088" + publicPath)).status(),
+    )
+    .toBe(404);
+  await viewer.goto(detail);
+  await expect(
+    viewer.getByRole("heading", { name: "Perfil público E2E", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    viewer.getByRole("heading", { name: /não encontrad/i }),
+  ).toBeVisible();
   await anonymous.close();
 });

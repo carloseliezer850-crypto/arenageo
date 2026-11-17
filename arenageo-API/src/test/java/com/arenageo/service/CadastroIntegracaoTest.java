@@ -978,6 +978,148 @@ class CadastroIntegracaoTest {
                 Boolean.class)));
   }
 
+  @Autowired LocalPartidaService locais;
+
+  long partidaNaReserva(ReservaFixture f, int user) {
+    var base = novaPartida(true, false);
+    var d =
+        new com.arenageo.dto.partida.PartidaRequest(
+            base.title(),
+            base.sportId(),
+            base.skillLevelId(),
+            base.description(),
+            base.location(),
+            base.city(),
+            base.state(),
+            f.start(),
+            base.timezone(),
+            60,
+            10,
+            false,
+            true);
+    return ((Number) partidas.criar(user, d).get("id")).longValue();
+  }
+
+  @Test
+  void vinculoReservaProtegeTitularidadeCompatibilidadeEPrivacidade() {
+    var f = reservaFixture();
+    int owner = jogadorConvidado("vinculo"), other = jogadorConvidado("outroVinculo");
+    long match = partidaNaReserva(f, owner);
+    long booking =
+        ((Number)
+                reservas
+                    .confirm(
+                        owner,
+                        new com.arenageo.dto.reserva.ReservaDtos.Confirm(
+                            quoteId(owner, f, f.start()), true))
+                    .get("id"))
+            .longValue();
+    assertEquals(1, locais.options(match, owner).size());
+    assertThrows(RecursoNaoEncontradoException.class, () -> locais.link(match, other, booking, 0));
+    long otherMatch = partidaNaReserva(f, other);
+    assertThrows(
+        RecursoNaoEncontradoException.class, () -> locais.link(otherMatch, other, booking, 0));
+    db.update("update tb_partida set dt_fim=dt_fim+interval '1 minute' where id_partida=?", match);
+    assertThrows(CadastroDuplicadoException.class, () -> locais.link(match, owner, booking, 0));
+    db.update("update tb_partida set dt_fim=dt_fim-interval '1 minute' where id_partida=?", match);
+    db.update("delete from tb_espaco_esporte where id_espaco=?", f.space());
+    assertThrows(CadastroDuplicadoException.class, () -> locais.link(match, owner, booking, 0));
+    db.update(
+        "insert into tb_espaco_esporte values(?,?)",
+        f.space(),
+        player().sports().getFirst().sportId());
+    locais.link(match, owner, booking, 0);
+    var venue = (Map<?, ?>) partidas.detalhe(match, null).get("venue");
+    assertEquals(
+        java.util.Set.of("spaceId", "space", "arenaId", "arena", "status"), venue.keySet());
+    assertEquals(
+        booking,
+        ((Number) ((Map<?, ?>) partidas.detalhe(match, owner).get("venue")).get("bookingId"))
+            .longValue());
+    long duplicate = partidaNaReserva(f, owner);
+    assertThrows(CadastroDuplicadoException.class, () -> locais.link(duplicate, owner, booking, 0));
+    assertThrows(CadastroDuplicadoException.class, () -> locais.link(match, owner, null, 0));
+    locais.link(match, owner, null, 1);
+    assertNull(partidas.detalhe(match, null).get("venue"));
+    assertEquals("CONFIRMADA", reservas.detail(owner, booking).get("status"));
+  }
+
+  @Test
+  void cancelamentoReservaAvisaParticipantesSemCancelarPartida() {
+    var f = reservaFixture();
+    int owner = jogadorConvidado("avisoLocal"), guest = contaParticipante("participanteLocal");
+    long match = partidaNaReserva(f, owner);
+    partidas.participar(match, guest, false);
+    long booking =
+        ((Number)
+                reservas
+                    .confirm(
+                        owner,
+                        new com.arenageo.dto.reserva.ReservaDtos.Confirm(
+                            quoteId(owner, f, f.start()), true))
+                    .get("id"))
+            .longValue();
+    locais.link(match, owner, booking, 0);
+    reservas.action(
+        owner,
+        booking,
+        new com.arenageo.dto.reserva.ReservaDtos.Action("CANCELAR", 0, "Mudança de planos"));
+    var detail = partidas.detalhe(match, guest);
+    assertEquals("PUBLICADA", detail.get("status"));
+    assertEquals("CONFIRMADA", detail.get("participation"));
+    assertEquals("CANCELADA", ((Map<?, ?>) detail.get("venue")).get("status"));
+    assertEquals(2, detail.get("version"));
+    assertEquals(
+        2,
+        db.queryForObject(
+            "select count(*) from tb_notificacao where nm_titulo='Reserva cancelada: local da"
+                + " partida a confirmar'",
+            Integer.class));
+    assertThrows(CadastroDuplicadoException.class, () -> locais.link(match, owner, booking, 1));
+  }
+
+  @Test
+  void umaReservaNaoPodeSerVinculadaConcorrentementeADuasPartidas() throws Exception {
+    var f = reservaFixture();
+    int owner = jogadorConvidado("concorrenciaLocal");
+    long a = partidaNaReserva(f, owner), b = partidaNaReserva(f, owner);
+    long booking =
+        ((Number)
+                reservas
+                    .confirm(
+                        owner,
+                        new com.arenageo.dto.reserva.ReservaDtos.Confirm(
+                            quoteId(owner, f, f.start()), true))
+                    .get("id"))
+            .longValue();
+    var gate = new java.util.concurrent.CountDownLatch(1);
+    try (var pool = java.util.concurrent.Executors.newFixedThreadPool(2)) {
+      var tasks =
+          java.util.stream.LongStream.of(a, b)
+              .mapToObj(
+                  id ->
+                      pool.submit(
+                          () -> {
+                            gate.await();
+                            try {
+                              locais.link(id, owner, booking, 0);
+                              return true;
+                            } catch (CadastroDuplicadoException e) {
+                              return false;
+                            }
+                          }))
+              .toList();
+      gate.countDown();
+      int successes = 0;
+      for (var task : tasks) if (task.get(10, java.util.concurrent.TimeUnit.SECONDS)) successes++;
+      assertEquals(1, successes);
+    }
+    assertEquals(
+        1,
+        db.queryForObject(
+            "select count(*) from tb_partida where id_reserva=?", Integer.class, booking));
+  }
+
   @Autowired ReservaService reservas;
 
   record ReservaFixture(int owner, int arena, long space, java.time.LocalDateTime start) {}

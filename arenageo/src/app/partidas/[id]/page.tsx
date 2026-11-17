@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { LocalPartida } from "@/components/LocalPartida";
 import { ConvidarPartida } from "@/components/Comunicacao";
 import { notFound } from "next/navigation";
 import { ErroApi } from "@/api/cliente";
@@ -5,7 +7,7 @@ import { Cabecalho } from "@/components/Cabecalho";
 import { Rodape } from "@/components/Rodape";
 import { PaginaRota } from "@/components/PaginaRota";
 import { AcoesPartida } from "@/components/AcoesPartida";
-import { lerPartida } from "@/services/servicoPartida";
+import { lerPartida, reservasCompativeis } from "@/services/servicoPartida";
 import { validarSessao } from "@/services/sessao";
 export default async function MatchDetailPage({
   params,
@@ -18,6 +20,8 @@ export default async function MatchDetailPage({
     if (e instanceof ErroApi && e.status === 404) notFound();
     throw e;
   });
+  const manageVenue = Boolean(match.canChangeVenue);
+  const options = manageVenue ? await reservasCompativeis(match.id) : [];
   const format = (date: string) =>
     new Date(date).toLocaleString("pt-BR", {
       timeZone: match.timezone,
@@ -44,10 +48,28 @@ export default async function MatchDetailPage({
             <p>
               {match.location} · {match.city} / {match.state}
             </p>
-            <p>
-              Local a confirmar com o organizador. Não há reserva de quadra
-              vinculada.
-            </p>
+            {match.venue ? (
+              <section aria-label="Local vinculado">
+                <p>
+                  {match.venue.arena} · {match.venue.space}
+                </p>
+                <p>
+                  {match.venue.status === "CONFIRMADA"
+                    ? "Local com reserva confirmada"
+                    : match.venue.status === "CANCELADA"
+                      ? "Reserva cancelada — local a confirmar com o organizador"
+                      : `Situação da reserva: ${match.venue.status}`}
+                </p>
+                <Link href={`/arenas/${match.venue.arenaId}`}>
+                  Consultar arena e espaços
+                </Link>
+              </section>
+            ) : (
+              <p>
+                Local a confirmar com o organizador. Não há reserva de quadra
+                vinculada.
+              </p>
+            )}
             <p>
               Gratuita · {match.currentPlayers} de {match.maxPlayers}{" "}
               participantes confirmados
@@ -60,6 +82,7 @@ export default async function MatchDetailPage({
             />
           </aside>
         </div>
+        {manageVenue && <LocalPartida match={match} options={options} />}
         {match.canManage && match.accepting && (
           <ConvidarPartida id={match.id} />
         )}

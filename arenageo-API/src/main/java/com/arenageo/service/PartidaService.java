@@ -12,9 +12,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class PartidaService {
   private final JdbcTemplate db;
   private final NotificacaoService avisos;
+  private final LocalPartidaService local;
 
-  public PartidaService(JdbcTemplate db, NotificacaoService avisos) {
+  public PartidaService(JdbcTemplate db, NotificacaoService avisos, LocalPartidaService local) {
     this.avisos = avisos;
+    this.local = local;
     this.db = db;
   }
 
@@ -129,6 +131,12 @@ public class PartidaService {
       throw new RecursoNaoEncontradoException("Partida não encontrada.");
     var v = db.query(SELECT + " where m.id_partida=?", this::view, id).getFirst();
     v.put("canManage", owner(row, user));
+    v.put(
+        "canChangeVenue",
+        owner(row, user)
+            && List.of("RASCUNHO", "PUBLICADA").contains(row.get("nm_status"))
+            && ((java.sql.Timestamp) row.get("dt_inicio")).toInstant().isAfter(Instant.now()));
+    v.put("venue", local.view(id, owner(row, user)));
     var status =
         user == null
             ? List.<String>of()

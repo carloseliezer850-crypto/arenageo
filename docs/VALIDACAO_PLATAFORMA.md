@@ -99,3 +99,9 @@ Tela de notificações permite desativar/ativar novos convites e bloquear/desblo
 Novo catálogo público paginado com consentimento, nome público separado, cidade/UF escolhidas, esportes/níveis reais, disponibilidade semanal com validade e pausa. Detalhe direto por ID e convite funcional a partir de partida organizada pelo usuário. Cabeçalho e contextos de conta validam sessão no backend. Filtros antigos fictícios substituídos por formulário de URL; distância não é oferecida sem cálculo. Link inerte da listagem de espaços corrigido; componente antigo de busca encaminhado à busca real.
 
 40 testes backend passaram localmente. Novos testes cobrem opt-in, campos da projeção pública, pausa/expiração, revisão, nível no vínculo do esporte, dia/período, horários sobrepostos, acesso privado e revogação de sessão. E2E adicional cobre cookie forjado, publicação voluntária, busca com acentos, reload e retirada de perfil. CI e aplicação remota pendentes neste registro inicial.
+
+### Continuação — integração do local (17/11/2026)
+
+Vínculo partida/reserva com validação de titularidade, intervalo completo, esporte, município, estado e unicidade. Novos testes cobrem acesso de terceiro, incompatibilidade de horário/esporte, concorrência otimista, projeção pública sem dados financeiros, desvinculação independente e aviso de cancelamento mantendo inscrições. Jornada Playwright passou a reservar no mesmo horário da partida, vincular pela interface, recarregar e verificar local a confirmar após cancelar a reserva. Resultado final do CI será registrado após execução.
+
+O teste de descoberta confere 404 diretamente na API e ausência do perfil/tela de indisponibilidade no navegador. Next documenta HTTP 200 para notFound em respostas já transmitidas por streaming; o status inicial do HTML não substitui a validação da proteção dos dados.

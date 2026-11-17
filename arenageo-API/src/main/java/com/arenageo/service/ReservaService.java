@@ -15,9 +15,12 @@ public class ReservaService {
   private final JdbcTemplate db;
   private final ObjectMapper json;
   private final NotificacaoService avisos;
+  private final LocalPartidaService local;
 
-  public ReservaService(JdbcTemplate db, ObjectMapper json, NotificacaoService avisos) {
+  public ReservaService(
+      JdbcTemplate db, ObjectMapper json, NotificacaoService avisos, LocalPartidaService local) {
     this.avisos = avisos;
+    this.local = local;
     this.db = db;
     this.json = json;
   }
@@ -558,6 +561,7 @@ public class ReservaService {
         a.reason(),
         id);
     event(id, user, action, a.reason());
+    if ("CANCELADA".equals(status)) local.bookingCancelled(id, a.version() + 1);
     return detail(user, id);
   }
 }

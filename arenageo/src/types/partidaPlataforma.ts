@@ -1,5 +1,13 @@
 import type { Match } from "./partida";
 export interface Partida extends Match {
+  venue?: {
+    spaceId: number;
+    space: string;
+    arenaId: number;
+    arena: string;
+    status: string;
+    bookingId?: number;
+  } | null;
   organizer: string;
   location: string;
   timezone: string;
@@ -9,6 +17,7 @@ export interface Partida extends Match {
   canComplete: boolean;
   version: number;
   canManage?: boolean;
+  canChangeVenue?: boolean;
   participation?: string;
   queuePosition?: number;
 }

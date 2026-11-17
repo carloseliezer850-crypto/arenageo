@@ -5,7 +5,7 @@ O usuário autorizou executar os seis grupos abaixo na ordem. Não é necessári
 | Grupo | Estado atual | Próximo resultado verificável |
 |---|---|---|
 | 1. Descoberta, ações e sessão | Implementação em validação: catálogo opt-in, disponibilidade, perfil público/convite, sessão real | CI completo; geografia por coordenadas e auditoria integral de todas as ações ainda não concluídas |
-| 2. Partida → espaço → reserva, edição e aprovação | Pendente | Vínculo autorizado e consistente, atualização de status, edição versionada e aprovação |
+| 2. Partida → espaço → reserva, edição e aprovação | Vínculo e avisos implementados, em validação | Confirmar CI/aplicar migration; implementar edição versionada e aprovação |
 | 3. Reagendamento e reserva manual | Pendente | Troca atômica sem perder horário anterior e balcão usando a mesma proteção contra sobreposição |
 | 4. Times/elenco/quadro e cenas | Pendente | Papéis, convites, vínculo por IDs e sequência tática persistida |
 | 5. Equipe, comunicação, avaliações, suporte e financeiro | Parcial apenas em convites/notificações/pagamento local | Permissões por arena, histórico e fluxos reais; provedor/recebedor precisam de definição para integração financeira externa |

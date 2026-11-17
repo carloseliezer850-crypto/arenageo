@@ -159,8 +159,11 @@ test("jogador, perfil, empresa, arena publicada e segunda arena", async ({
   await page.locator('[name="title"]').fill("Partida E2E gratuita");
   await page.locator('[name="sportId"]').selectOption({ index: 1 });
   await page.locator('[name="skillLevelId"]').selectOption({ index: 1 });
-  const future =
-    new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10) + "T18:00";
+  const bookingDay = new Date(Date.now() + 7 * 86400000);
+  while (bookingDay.getUTCDay() !== 1)
+    bookingDay.setUTCDate(bookingDay.getUTCDate() + 1);
+  const future = bookingDay.toISOString().slice(0, 10) + "T10:00";
+  await page.locator('[name="durationMinutes"]').fill("60");
   await page.locator('[name="dateTime"]').fill(future);
   await page.locator('[name="city"]').fill("Bagé");
   await page.locator('[name="location"]').fill("Quadra combinada pelo grupo");
@@ -199,9 +202,6 @@ test("jogador, perfil, empresa, arena publicada e segunda arena", async ({
   await page
     .getByRole("link", { name: "Consultar horários", exact: true })
     .click();
-  const bookingDay = new Date(Date.now() + 7 * 86400000);
-  while (bookingDay.getUTCDay() !== 1)
-    bookingDay.setUTCDate(bookingDay.getUTCDate() + 1);
   await page
     .getByLabel("Data na arena")
     .fill(bookingDay.toISOString().slice(0, 10));
@@ -233,6 +233,23 @@ test("jogador, perfil, empresa, arena publicada e segunda arena", async ({
   await expect(
     page.getByText("Pagamento pendente no local", { exact: false }),
   ).toBeVisible();
+  await page.goto(matchUrl);
+  await page
+    .getByLabel("Reserva compatível", { exact: true })
+    .selectOption({ index: 1 });
+  await page
+    .getByRole("button", { name: "Vincular reserva", exact: true })
+    .click();
+  await expect(
+    page.getByText("Local com reserva confirmada", { exact: true }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(
+    page.getByRole("link", {
+      name: "Consultar minha reserva vinculada",
+      exact: true,
+    }),
+  ).toHaveAttribute("href", new URL(bookingUrl).pathname);
   await page.goto(
     arenaManagementUrl +
       "/agenda?date=" +
@@ -254,6 +271,15 @@ test("jogador, perfil, empresa, arena publicada e segunda arena", async ({
   await expect(page.getByText("Protocolo:", { exact: false })).toContainText(
     "CANCELADA",
   );
+  await page.goto(matchUrl);
+  await expect(
+    page.getByText("Reserva cancelada — local a confirmar com o organizador", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Sua participação: CONFIRMADA", { exact: true }),
+  ).toBeVisible();
   await page.goto("/quadro-tatico");
   await page.getByLabel("Título do quadro", { exact: true }).fill("Treino E2E");
   await page

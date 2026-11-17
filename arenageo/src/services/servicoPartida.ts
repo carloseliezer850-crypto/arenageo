@@ -91,3 +91,18 @@ export async function mudarEstadoPartida(
     reason,
   });
 }
+
+export async function reservasCompativeis(
+  id: number,
+): Promise<{ id: number; space: string; arena: string }[]> {
+  return requisitarApi(`/partidas/${id}/reservas-compativeis`, {
+    headers: await headers(),
+  });
+}
+export async function vincularReservaPartida(
+  id: number,
+  bookingId: number | null,
+  version: number,
+) {
+  return mutation(`/partidas/${id}/reserva`, "PUT", { bookingId, version });
+}

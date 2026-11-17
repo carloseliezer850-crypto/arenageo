@@ -13,9 +13,11 @@ import org.springframework.web.bind.annotation.*;
 public class PartidaController {
   private final PartidaService service;
   private final IdempotenciaService idem;
+  private final LocalPartidaService local;
 
-  public PartidaController(PartidaService s, IdempotenciaService i) {
+  public PartidaController(PartidaService s, IdempotenciaService i, LocalPartidaService local) {
     service = s;
+    this.local = local;
     idem = i;
   }
 
@@ -63,6 +65,20 @@ public class PartidaController {
     return service.transicao(
         id, Integer.parseInt(p.getName()), d.status(), d.version(), d.reason());
   }
+
+  @GetMapping("/{id}/reservas-compativeis")
+  public Object reservas(Principal p, @PathVariable long id) {
+    return local.options(id, Integer.parseInt(p.getName()));
+  }
+
+  @PutMapping("/{id}/reserva")
+  public Object vincular(Principal p, @PathVariable long id, @Valid @RequestBody Vinculo d) {
+    int user = Integer.parseInt(p.getName());
+    local.link(id, user, d.bookingId(), d.version());
+    return service.detalhe(id, user);
+  }
+
+  public record Vinculo(@Positive Long bookingId, @Min(0) int version) {}
 
   public record Participacao(boolean leave) {}
 

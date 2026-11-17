@@ -81,3 +81,11 @@ Verificação feita dentro da transação de criação do convite, com trava por
 `GET /usuarios/sessao`: retorna apenas `{authenticated:true}` após validar JWT, conta ativa e versão de sessão. Cabeçalho, painel e controles contextuais usam validação real, sem tratar presença de cookie como autenticação; erro de infraestrutura não é apresentado como sessão confirmada. Memoização apenas dentro da renderização da requisição.
 
 Perfil público permite escolher partida própria publicada/futura e enviar convite pela API existente. Preferências e bloqueios continuam aplicáveis. Dados de localização são texto de cidade/UF declarado, sem identificação municipal ou serviço geográfico neste incremento.
+
+### Vínculo explícito de partida e reserva
+
+- GET `/partidas/{id}/reservas-compativeis`: somente organizador, até 100 reservas da própria conta, confirmadas, esporte e município compatíveis, cobrindo todo o intervalo; exclui reserva já vinculada a outra partida.
+- PUT `/partidas/{id}/reserva`: `{bookingId: number|null, version}`; null desvincula. Somente organizador, rascunho/publicada antes do início. Versão evita sobrescrita; locks arena → reserva → partida e índice único impedem duplo vínculo. Reserva externa/manual informada por texto continua sem confirmação de local.
+- Detalhe da partida inclui `venue` (arena, espaço e status) e `canChangeVenue`. Apenas organizador recebe `venue.bookingId`; preço, cliente, motivo e pagamento não integram a projeção pública.
+- Vínculo/desvinculação e cancelamento da reserva emitem avisos internos ao organizador/participantes ativos. Cancelamento da reserva atualiza status exibido e versão da partida, sem cancelar partida/inscrições. Desvincular ou cancelar partida não cancela nem estorna reserva.
+- Não há criação automática de reserva nem cobrança por vincular. Edição de horário e aprovação de participantes ainda pendentes.
