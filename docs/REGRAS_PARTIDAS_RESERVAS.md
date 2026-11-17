@@ -46,3 +46,9 @@ Limitações deste fluxo: tarifa única por espaço, duração fixa, agenda diá
 ## Atualização de comunicação — 15/11/2026
 
 Agora há convites internos por nome de usuário, recebimento/resposta em `/notificacoes`, avisos de mudança e aviso ao primeiro da fila quando houver vaga. A confirmação da vaga continua manual. Convites não reservam vagas, não alteram a ordem da fila e não enviam e-mails. Repetir o convite não gera nova entrega; após recusa/revogação, o mesmo organizador não pode recriá-lo para aquela partida. Limite de 20 novos convites/hora por organizador, com serialização transacional. A caixa armazena os eventos na mesma transação da alteração, dispensando um worker para entregar notificações internas; canais externos/outbox de envio seguem pendentes.
+
+## Atualização do local — 17/11/2026
+
+Partidas agora aceitam vínculo explícito a uma reserva do organizador. O vínculo exige reserva confirmada, mesma cidade/UF, modalidade atendida pelo espaço e cobertura de todo o intervalo. A reserva não pode atender duas partidas simultaneamente; o índice único e os locks em ordem arena → reserva → partida protegem essa regra. Ações usam a versão da partida e não geram cobrança.
+
+O detalhe público mostra arena, espaço e estado atual da reserva. Protocolo, valores, cliente e pagamento permanecem privados. Desvincular ou cancelar a partida não cancela o horário contratado. Cancelar uma reserva vinculada avisa organizador e participantes, atualiza a versão da partida e deixa o local a confirmar. As inscrições permanecem no estado anterior; participantes podem sair pelo fluxo existente. Reconfirmação obrigatória após mudança e edição de data ainda não foram implementadas.

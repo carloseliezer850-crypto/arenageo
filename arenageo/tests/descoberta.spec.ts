@@ -90,6 +90,7 @@ test("descoberta é voluntária, filtros persistem e cookie forjado não autenti
     "bage",
   );
   await viewer.getByRole("link", { name: "Ver perfil", exact: true }).click();
+  await expect(viewer).toHaveURL(/\/jogadores\/\d+$/);
   const detail = viewer.url();
   await expect(
     viewer.getByRole("heading", { name: "Perfil público E2E", exact: true }),
@@ -104,6 +105,20 @@ test("descoberta é voluntária, filtros persistem e cookie forjado não autenti
   await expect(
     page.getByRole("button", { name: "Salvar descoberta", exact: true }),
   ).toBeEnabled();
+  await expect
+    .poll(async () => {
+      const response = await page.request.get(
+        "http://localhost:8088/jogadores/me/descoberta",
+        { headers: { Authorization: `Bearer ${auth.token}` } },
+      );
+      expect(response.ok()).toBeTruthy();
+      return (await response.json()).visible;
+    })
+    .toBe(false);
+  await page.reload();
+  await expect(
+    page.getByLabel("Quero aparecer na busca de jogadores"),
+  ).not.toBeChecked();
   const publicPath = new URL(detail).pathname;
   await expect
     .poll(async () =>
