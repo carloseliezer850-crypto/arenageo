@@ -1,4 +1,4 @@
-# Aplicação no Supabase — atualizado em 16/11/2026
+# Aplicação no Supabase — atualizado em 17/11/2026
 
 Projeto ArenaGeo: `uxvhscoqmttkffrmmkvn`. Aplicação autorizada pelo usuário e concluída em 13/11/2026, aproximadamente 16h12–16h14 (America/Sao_Paulo).
 
@@ -15,6 +15,7 @@ O conector gera a versão remota no instante da aplicação. Os arquivos de orig
 | 20261113191348 | isolar_extensao_btree_gist | 20261113191412 |
 | 20261115170926 | convites_notificacoes | 20261115172454 |
 | 20261116182624 | quadro_compartilhamento | 20261116183451 |
+| 20261117182006 | privacidade_convites | 20261117182934 |
 
 As quatro primeiras migrations foram aplicadas sem alteração do SQL já testado. O verificador apontou `btree_gist` em `public`; a quinta migration moveu a extensão para `extensions`, preservando a restrição de exclusão existente. As tabelas anteriores e os dados de clientes não foram excluídos ou substituídos.
 
@@ -45,3 +46,9 @@ Os avisos são internos ao site; não há e-mail, push ou atualização em tempo
 Migration `quadro_compartilhamento` aplicada após aprovação do [CI 43929749765](https://github.com/carloseliezer850-crypto/arenageo/actions/runs/43929749765), commit `7f405d6d2ebc396588f5992dcbfaa45c0e1f8657`. Verificados histórico remoto, tabela `tb_quadro_compartilhamento`, RLS ativo e ausência de privilégios SELECT/INSERT/UPDATE/DELETE/TRUNCATE para anon/authenticated. Advisor de segurança sem ERROR/WARN, apenas 27 informações de RLS sem policies (acesso exclusivo pela API Spring). Nenhum quadro ou link de cliente foi publicado durante a aplicação.
 
 35 testes backend, 4 do modelo tático e 5 Playwright aprovados, além de typecheck, lint e build. O teste no navegador abre um link em sessão anônima, verifica a ausência dos controles de edição, revoga pelo dono e confirma a indisponibilidade ao atualizar. Banco atualizado; aplicação ainda depende da versão da branch, sem merge/deploy.
+
+## Privacidade de convites — 17/11/2026
+
+Migration aplicada após aprovação do [CI 44147797863](https://github.com/carloseliezer850-crypto/arenageo/actions/runs/44147797863), commit `19a211cf19529bbc289517f7d9f87dd6dd53d8cd`: 37 testes backend, 4 do modelo tático e 5 Playwright, typecheck, lint e build. O E2E verifica persistência da preferência após atualizar a página e bloqueio/desbloqueio de remetente.
+
+Histórico remoto conferido. Tabelas `tb_convite_preferencia` e `tb_convite_bloqueio` com RLS ativo e sem privilégios SELECT/INSERT/UPDATE/DELETE/TRUNCATE para anon/authenticated. Advisor sem ERROR/WARN; 29 informações de RLS sem policies, conforme acesso exclusivo pela API Spring. Não foram alteradas preferências ou convites de clientes durante a aplicação. Sem merge/deploy da aplicação.
