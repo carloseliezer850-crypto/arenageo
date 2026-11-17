@@ -61,3 +61,11 @@ Notificações persistidas na mesma transação do evento, com chave única por 
 - `GET /quadros-compartilhados/{token}`: público, apenas leitura, retorna título/documento/revisão/validade; sem ID da conta, dados cadastrais ou acesso de escrita. Valida token, expiração, quadro ativo e conta ativa em cada consulta; inexistente/expirado/revogado retorna 404 genérico. `Cache-Control: no-store`, `Referrer-Policy: no-referrer`, `X-Robots-Tag: noindex, nofollow`.
 
 Um link por quadro, snapshot independente de alterações posteriores. Arquivar remove o link e restaurar não o reativa. Excluir remove por FK cascade. A interface explica que o título é divulgado e permite optar por divulgar nomes; qualquer pessoa com o link poderá ler. Revogação impede novas consultas, mas não apaga cópias já obtidas. Criar novamente após resposta desconhecida substitui a tentativa anterior. O token não dá acesso a endpoints privados.
+## Privacidade de convites — 17/11/2026
+
+- `GET /convites/privacidade`: preferências e lista de remetentes bloqueados da conta autenticada (`enabled`, `blocked: [{id,username}]`). Padrão: novos convites habilitados.
+- `PUT /convites/privacidade` com `{enabled: boolean}`: ativa/desativa novos convites; campo obrigatório. HTTP 204.
+- `POST /convites/privacidade/bloqueios` com `{username}`: bloqueia novos convites desse remetente por nome de usuário exato, sem distinção de caixa; idempotente. Rejeita a própria conta, usuário inexistente e mais de 500 bloqueios. HTTP 204.
+- `DELETE /convites/privacidade/bloqueios/{id}`: desfaz o bloqueio somente na conta autenticada, idempotente, HTTP 204.
+
+Verificação feita dentro da transação de criação do convite, com trava por destinatário compartilhada com a alteração de preferências. Se a alteração de preferência termina primeiro, o novo convite observa essa alteração. Rejeição não cria convite nem notificação. O remetente recebe `INVITEE_UNAVAILABLE` genérico, sem motivo ou lista de bloqueios. Repetir um convite já existente retorna o original sem novo envio; configurações não invalidam convites anteriores nem impedem sua resposta. Avisos operacionais de reservas e participações não são desativados. Escopo é apenas convites para partidas, não bloqueio global de conta/chat/perfis.

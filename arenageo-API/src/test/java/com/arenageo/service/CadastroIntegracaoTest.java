@@ -444,6 +444,82 @@ class CadastroIntegracaoTest {
         RecursoNaoEncontradoException.class, () -> gestao.lerEmpresa(999, result.idPerfil()));
   }
 
+  @Autowired PrivacidadeConviteService privacidade;
+
+  @Test
+  void privacidadeImpedeNovosConvitesSemGerarAvisosEPermiteReativar() {
+    int owner = jogadores.cadastrar(player()).user().id();
+    int invited = jogadorConvidado("privado");
+    long match = ((Number) partidas.criar(owner, novaPartida(true, true)).get("id")).longValue();
+    assertEquals(true, ((Map<?, ?>) privacidade.read(invited)).get("enabled"));
+    privacidade.setEnabled(invited, false);
+    privacidade.setEnabled(invited, false);
+    long before = db.queryForObject("select count(*) from tb_notificacao", Long.class);
+    var disabled =
+        assertThrows(RegraNegocioException.class, () -> convites.convidar(owner, match, "privado"));
+    assertEquals(0, db.queryForObject("select count(*) from tb_partida_convite", Integer.class));
+    assertEquals(before, db.queryForObject("select count(*) from tb_notificacao", Long.class));
+    privacidade.setEnabled(invited, true);
+    String sender =
+        db.queryForObject(
+            "select nm_nome_usuario from tb_pessoa where id_usuario=?", String.class, owner);
+    privacidade.block(invited, sender);
+    privacidade.block(invited, sender);
+    var blocked =
+        assertThrows(RegraNegocioException.class, () -> convites.convidar(owner, match, "privado"));
+    assertEquals(disabled.getMessage(), blocked.getMessage());
+    assertEquals(1, db.queryForObject("select count(*) from tb_convite_bloqueio", Integer.class));
+    privacidade.unblock(owner, owner); // cannot remove another user's block
+    assertThrows(RegraNegocioException.class, () -> convites.convidar(owner, match, "privado"));
+    assertTrue(((List<?>) ((Map<?, ?>) privacidade.read(owner)).get("blocked")).isEmpty());
+    privacidade.unblock(invited, owner);
+    privacidade.unblock(invited, owner);
+    convites.convidar(owner, match, "privado");
+    long id = db.queryForObject("select id_convite from tb_partida_convite", Long.class);
+    privacidade.setEnabled(invited, false);
+    convites.convidar(owner, match, "privado"); // retry returns original, no new invite or notice
+    assertEquals(1, db.queryForObject("select count(*) from tb_partida_convite", Integer.class));
+    convites.responder(invited, id, "RECUSAR");
+    assertEquals(
+        "RECUSADO",
+        db.queryForObject(
+            "select nm_status from tb_partida_convite where id_convite=?", String.class, id));
+  }
+
+  @Test
+  void privacidadeValidaBloqueioEExigeSessao() throws Exception {
+    var auth = jogadores.cadastrar(player());
+    int user = auth.user().id();
+    String own =
+        db.queryForObject(
+            "select nm_nome_usuario from tb_pessoa where id_usuario=?", String.class, user);
+    assertThrows(RegraNegocioException.class, () -> privacidade.block(user, own));
+    assertThrows(RegraNegocioException.class, () -> privacidade.block(user, "usuario-inexistente"));
+    var client = java.net.http.HttpClient.newHttpClient();
+    var uri = java.net.URI.create("http://localhost:" + port + "/convites/privacidade");
+    var unauth =
+        client.send(
+            java.net.http.HttpRequest.newBuilder(uri).GET().build(),
+            java.net.http.HttpResponse.BodyHandlers.ofString());
+    assertEquals(401, unauth.statusCode());
+    var invalid =
+        client.send(
+            java.net.http.HttpRequest.newBuilder(uri)
+                .header("Authorization", "Bearer " + auth.token())
+                .header("Content-Type", "application/json")
+                .PUT(java.net.http.HttpRequest.BodyPublishers.ofString("{}"))
+                .build(),
+            java.net.http.HttpResponse.BodyHandlers.ofString());
+    assertEquals(400, invalid.statusCode());
+    assertEquals(true, ((Map<?, ?>) privacidade.read(user)).get("enabled"));
+    assertFalse(
+        Boolean.TRUE.equals(
+            db.queryForObject(
+                "select has_table_privilege('anon','tb_convite_preferencia','SELECT') or"
+                    + " has_table_privilege('authenticated','tb_convite_bloqueio','INSERT')",
+                Boolean.class)));
+  }
+
   @Autowired ConviteService convites;
   @Autowired NotificacaoService avisos;
 

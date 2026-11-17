@@ -58,3 +58,22 @@ export async function convidarJogador(id: number, username: string) {
 export async function responderConvite(id: number, action: string) {
   return mutate(`/convites/${id}/resposta`, "POST", { action });
 }
+
+export interface PrivacidadeConvites {
+  enabled: boolean;
+  blocked: { id: number; username: string }[];
+}
+export async function lerPrivacidadeConvites() {
+  return requisitarApi<PrivacidadeConvites>("/convites/privacidade", {
+    headers: await headers(),
+  });
+}
+export async function definirRecebimento(enabled: boolean) {
+  return mutate("/convites/privacidade", "PUT", { enabled });
+}
+export async function bloquearRemetente(username: string) {
+  return mutate("/convites/privacidade/bloqueios", "POST", { username });
+}
+export async function desbloquearRemetente(id: number) {
+  return mutate(`/convites/privacidade/bloqueios/${id}`, "DELETE");
+}

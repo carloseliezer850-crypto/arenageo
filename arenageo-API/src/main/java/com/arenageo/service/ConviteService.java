@@ -12,7 +12,11 @@ public class ConviteService {
   private final PartidaService partidas;
   private final NotificacaoService avisos;
 
-  public ConviteService(JdbcTemplate db, PartidaService p, NotificacaoService n) {
+  private final PrivacidadeConviteService privacy;
+
+  public ConviteService(
+      JdbcTemplate db, PartidaService p, NotificacaoService n, PrivacidadeConviteService privacy) {
+    this.privacy = privacy;
     this.db = db;
     partidas = p;
     avisos = n;
@@ -60,6 +64,7 @@ public class ConviteService {
             match,
             target);
     if (!existing.isEmpty()) return existing.getFirst();
+    privacy.allow(target, user);
     if (Boolean.TRUE.equals(
         db.queryForObject(
             "select exists(select 1 from tb_partida_participante where id_partida=? and"

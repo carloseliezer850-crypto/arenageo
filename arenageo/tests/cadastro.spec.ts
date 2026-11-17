@@ -421,5 +421,54 @@ test("jogador, perfil, empresa, arena publicada e segunda arena", async ({
   await expect(
     guestPage.getByText("Sua participação: CONFIRMADA", { exact: true }),
   ).toBeVisible();
+
+  await guestPage.goto("/notificacoes");
+  await guestPage
+    .getByRole("button", { name: "Desativar novos convites", exact: true })
+    .click();
+  await expect(
+    guestPage.getByRole("button", {
+      name: "Ativar novos convites",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await guestPage.reload();
+  await expect(
+    guestPage.getByRole("button", {
+      name: "Ativar novos convites",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await guestPage
+    .getByLabel("Usuário a bloquear", { exact: true })
+    .fill("e2e.jogador");
+  await guestPage
+    .getByRole("button", {
+      name: "Bloquear convites deste usuário",
+      exact: true,
+    })
+    .click();
+  await expect(
+    guestPage.getByRole("button", {
+      name: "Desbloquear e2e.jogador",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await guestPage.reload();
+  await guestPage
+    .getByRole("button", { name: "Desbloquear e2e.jogador", exact: true })
+    .click();
+  await expect(
+    guestPage.getByText("Nenhum remetente bloqueado.", { exact: true }),
+  ).toBeVisible();
+  await guestPage
+    .getByRole("button", { name: "Ativar novos convites", exact: true })
+    .click();
+  await expect(
+    guestPage.getByRole("button", {
+      name: "Desativar novos convites",
+      exact: true,
+    }),
+  ).toBeVisible();
   await guestContext.close();
 });
