@@ -93,6 +93,12 @@ public class DescobertaJogadorService {
   public Object save(int user, Config c) {
     int id = own(user);
     db.queryForList("select id_jogador from tb_jogador where id_jogador=? for update", id);
+    if (!ZoneId.getAvailableZoneIds().contains(c.timezone())
+        || !Boolean.TRUE.equals(
+            db.queryForObject(
+                "select exists(select 1 from pg_timezone_names where name=?)",
+                Boolean.class,
+                c.timezone()))) throw invalid("timezone", "Selecione um fuso IANA válido.");
     ZoneId zone;
     try {
       zone = ZoneId.of(c.timezone());

@@ -97,6 +97,11 @@ export function LocalPartida({
         </>
       )}
       <p>
+        Ao mudar o local, as inscrições continuam confirmadas e os participantes
+        recebem um aviso. Eles podem sair da partida; ainda não há reconfirmação
+        obrigatória.
+      </p>
+      <p>
         Desvincular ou cancelar a partida não cancela a reserva. Se precisar
         cancelar o horário, use a página da reserva e confira a política da
         arena.

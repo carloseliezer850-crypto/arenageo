@@ -461,6 +461,25 @@ class CadastroIntegracaoTest {
   }
 
   @Test
+  void descobertaRejeitaOffsetSemIdentificadorIana() {
+    int user = jogadores.cadastrar(player()).user().id();
+    var base = publicConfig(true, 0, List.of(new DescobertaJogadorService.Slot(1, 600, 720)));
+    var invalid =
+        new DescobertaJogadorService.Config(
+            base.visible(),
+            base.name(),
+            base.city(),
+            base.state(),
+            base.bio(),
+            "+03:00",
+            base.validUntil(),
+            base.revision(),
+            base.slots());
+    assertThrows(RegraNegocioException.class, () -> descoberta.save(user, invalid));
+    assertEquals(0, db.queryForObject("select count(*) from tb_jogador_descoberta", Integer.class));
+  }
+
+  @Test
   void descobertaExigeOptInNaoExibeDadosPessoaisEPodePausar() {
     int user = jogadores.cadastrar(player()).user().id();
     int id = db.queryForObject("select id_jogador from tb_jogador", Integer.class);
