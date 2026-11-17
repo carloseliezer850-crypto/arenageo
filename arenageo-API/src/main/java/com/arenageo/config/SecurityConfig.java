@@ -45,11 +45,14 @@ public class SecurityConfig {
                         "/conta/redefinir",
                         "/conta/confirmar")
                     .permitAll()
-                    .requestMatchers(HttpMethod.GET, "/partidas/minhas")
+                    .requestMatchers(
+                        HttpMethod.GET, "/partidas/minhas", "/jogadores/me", "/jogadores/me/**")
                     .authenticated()
                     .requestMatchers(
                         HttpMethod.GET,
                         "/quadros-compartilhados/{token}",
+                        "/jogadores",
+                        "/jogadores/{id}",
                         "/esportes",
                         "/niveis",
                         "/partidas",

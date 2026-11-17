@@ -1,41 +1,23 @@
-import { CartaoJogador } from "@/components/CartaoJogador";
+import Link from "next/link";
+import { CartaoJogador } from "./CartaoJogador";
 import type { Player } from "@/types/jogador";
-import type { SkillLevel } from "@/types/nivelHabilidade";
-
-type ListaJogadoresProps = {
-  players: Player[];
-  skillLevels: SkillLevel[];
-};
-
-export function ListaJogadores({ players, skillLevels }: ListaJogadoresProps) {
-  const skillLevelById = new Map(skillLevels.map((level) => [level.id, level]));
-
+export function ListaJogadores({ players }: { players: Player[] }) {
   return (
     <section className="players-section" aria-labelledby="players-heading">
-      <div className="section-heading-row">
-        <div>
-          <p className="eyebrow">Encontrar jogadores</p>
-          <h2 id="players-heading">Jogadores perto de você</h2>
-        </div>
-      </div>
-
+      <h2 id="players-heading">Jogadores que querem jogar</h2>
+      <p>
+        Perfis publicados voluntariamente. Filtre por cidade para encontrar
+        pessoas na sua região.
+      </p>
       <div className="player-grid">
-        {players.length === 0 ? (
-          <div className="empty-state">
-            <h3>Nenhum jogador disponível</h3>
-            <p>Os perfis cadastrados aparecerão aqui quando o serviço estiver conectado.</p>
-          </div>
-        ) : players.map((player) => {
-          const skillLevel = skillLevelById.get(player.skillLevelId);
-
-          if (!skillLevel) {
-            return null;
-          }
-
-          return <CartaoJogador key={player.id} player={player} skillLevel={skillLevel} />;
-        })}
+        {players.map((p) => (
+          <CartaoJogador key={p.id} player={p} />
+        ))}
+        {!players.length && (
+          <p>Nenhum perfil público com disponibilidade vigente.</p>
+        )}
       </div>
+      <Link href="/jogadores">Buscar jogadores</Link>
     </section>
   );
 }
-

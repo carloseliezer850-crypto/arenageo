@@ -69,3 +69,15 @@ Um link por quadro, snapshot independente de alterações posteriores. Arquivar 
 - `DELETE /convites/privacidade/bloqueios/{id}`: desfaz o bloqueio somente na conta autenticada, idempotente, HTTP 204.
 
 Verificação feita dentro da transação de criação do convite, com trava por destinatário compartilhada com a alteração de preferências. Se a alteração de preferência termina primeiro, o novo convite observa essa alteração. Rejeição não cria convite nem notificação. O remetente recebe `INVITEE_UNAVAILABLE` genérico, sem motivo ou lista de bloqueios. Repetir um convite já existente retorna o original sem novo envio; configurações não invalidam convites anteriores nem impedem sua resposta. Avisos operacionais de reservas e participações não são desativados. Escopo é apenas convites para partidas, não bloqueio global de conta/chat/perfis.
+
+## Descoberta voluntária e sessão — 17/11/2026
+
+`GET /jogadores` retorna `{items,total,page,size}` com página fixa de 20, ordenação por nome público e ID; filtros `query`, `city`, `state`, `sport`, `level`, `date`, `period`, `page`. Nome/cidade ignoram caixa e acentos comuns. Nível exige esporte e usa o mesmo vínculo jogador-esporte. Período exige data (madrugada 00–06, manhã 06–12, tarde 12–18, noite 18–24); interseção com disponibilidade semanal declarada, conforme fuso de cada perfil. Não equivale a ausência de compromissos ou confirmação de presença. Sem filtro/ordenação por distância.
+
+`GET /jogadores/{id}` consulta projeção pública por ID, com 404 uniforme para perfil ausente, privado, expirado ou conta inativa. DTO contém apenas ID de jogador, nome público escolhido, username, cidade/UF escolhidas, bio, esportes/níveis, fuso, validade e horários. Não consulta endereço residencial nem devolve CPF, e-mail, telefone, coordenadas ou imagem privada. Catálogos inativos são omitidos. Busca não publica automaticamente contas existentes.
+
+`GET/PUT /jogadores/me/descoberta`: acesso autenticado ao próprio perfil; `visible,name,city,state,bio,timezone,validUntil,revision,slots:[{day,start,end}]`. Dias ISO 1–7, minutos 0–1440, até 28 intervalos não sobrepostos; validade até 90 dias; revisão otimista. Publicação exige ao menos um horário. Desativar ou vencer a validade retira busca e detalhe. Horários virando a meia-noite usam dois intervalos/dias. API pública e privada mantêm projeções separadas.
+
+`GET /usuarios/sessao`: retorna apenas `{authenticated:true}` após validar JWT, conta ativa e versão de sessão. Cabeçalho, painel e controles contextuais usam validação real, sem tratar presença de cookie como autenticação; erro de infraestrutura não é apresentado como sessão confirmada. Memoização apenas dentro da renderização da requisição.
+
+Perfil público permite escolher partida própria publicada/futura e enviar convite pela API existente. Preferências e bloqueios continuam aplicáveis. Dados de localização são texto de cidade/UF declarado, sem identificação municipal ou serviço geográfico neste incremento.

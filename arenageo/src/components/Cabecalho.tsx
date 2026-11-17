@@ -1,10 +1,11 @@
 import Link from "next/link";
 
-import { obterToken } from "@/services/sessao";
+import { validarSessao } from "@/services/sessao";
 import { MenuNavegacao } from "./MenuNavegacao";
 
 export async function Cabecalho() {
-  const conectado = Boolean(await obterToken());
+  const session = await validarSessao();
+  const conectado = session === "authenticated";
   return (
     <header className="site-header">
       <div className="container header-inner">
@@ -19,8 +20,13 @@ export async function Cabecalho() {
         </Link>
 
         <MenuNavegacao conectado={conectado} />
+        {session === "unavailable" && (
+          <p role="status">
+            Não foi possível verificar sua sessão. Atualize a página para tentar
+            novamente.
+          </p>
+        )}
       </div>
     </header>
   );
 }
-

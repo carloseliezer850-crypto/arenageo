@@ -1,164 +1,79 @@
-"use client";
-
-import { useMemo, useState } from "react";
-import type { Player } from "@/types/jogador";
-import type { SkillLevel } from "@/types/nivelHabilidade";
+import Link from "next/link";
 import type { Sport } from "@/types/esporte";
-
-type FiltrosJogadorProps = {
-  players: Player[];
+import type { SkillLevel } from "@/types/nivelHabilidade";
+export function FiltrosJogador({
+  values,
+  sports,
+  levels,
+}: {
+  values: Record<string, string>;
   sports: Sport[];
-  skillLevels: SkillLevel[];
-};
-
-type PlayerFilterState = {
-  name: string;
-  sportId: string;
-  city: string;
-  distance: string;
-  skillLevelId: string;
-  availability: string;
-  sort: string;
-};
-
-const defaultFilters: PlayerFilterState = {
-  name: "",
-  sportId: "",
-  city: "",
-  distance: "",
-  skillLevelId: "",
-  availability: "",
-  sort: "nearest",
-};
-
-export function FiltrosJogador({ players, sports, skillLevels }: FiltrosJogadorProps) {
-  const [filters, setFilters] = useState<PlayerFilterState>(defaultFilters);
-
-  const filteredPlayers = useMemo(() => {
-    const filtered = players.filter((player) => {
-      const nameMatch = !filters.name || player.name.toLowerCase().includes(filters.name.toLowerCase());
-      const cityMatch = !filters.city || player.city.toLowerCase().includes(filters.city.toLowerCase());
-      const levelMatch =
-        !filters.skillLevelId || player.skillLevelId === Number(filters.skillLevelId);
-      const availabilityMatch = !filters.availability || filters.availability === "today";
-
-      return nameMatch && cityMatch && levelMatch && availabilityMatch;
-    });
-
-    return [...filtered].sort((a, b) => {
-      if (filters.sort === "name") {
-        return a.name.localeCompare(b.name);
-      }
-
-      return a.id - b.id;
-    });
-  }, [filters, players]);
-
-  const updateFilter = (field: keyof PlayerFilterState, value: string) => {
-    setFilters((current) => ({ ...current, [field]: value }));
-  };
-
-  const clearFilters = () => setFilters(defaultFilters);
-
+  levels: SkillLevel[];
+}) {
   return (
-    <div className="route-stack">
-      <div className="filter-panel">
-        <div className="form-grid">
-          <label className="field">
-            <span>Nome</span>
-            <input value={filters.name} onChange={(event) => updateFilter("name", event.target.value)} placeholder="Buscar por nome" />
-          </label>
-
-          <label className="field">
-            <span>Esporte</span>
-            <select value={filters.sportId} onChange={(event) => updateFilter("sportId", event.target.value)}>
-              <option value="">Todos</option>
-              {sports.map((sport) => (
-                <option key={sport.id} value={sport.id}>{sport.name}</option>
-              ))}
-            </select>
-          </label>
-
-          <label className="field">
-            <span>Cidade</span>
-            <input value={filters.city} onChange={(event) => updateFilter("city", event.target.value)} placeholder="Buscar por cidade" />
-          </label>
-
-          <label className="field">
-            <span>Distância máxima</span>
-            <select value={filters.distance} onChange={(event) => updateFilter("distance", event.target.value)}>
-              <option value="">Qualquer</option>
-              <option value="5">Até 5 km</option>
-              <option value="10">Até 10 km</option>
-              <option value="20">Até 20 km</option>
-            </select>
-          </label>
-
-          <label className="field">
-            <span>Nível</span>
-            <select value={filters.skillLevelId} onChange={(event) => updateFilter("skillLevelId", event.target.value)}>
-              <option value="">Todos</option>
-              {skillLevels.map((level) => (
-                <option key={level.id} value={level.id}>{level.name}</option>
-              ))}
-            </select>
-          </label>
-
-          <label className="field">
-            <span>Disponibilidade</span>
-            <select value={filters.availability} onChange={(event) => updateFilter("availability", event.target.value)}>
-              <option value="">Qualquer</option>
-              <option value="today">Hoje</option>
-              <option value="weekend">Fim de semana</option>
-            </select>
-          </label>
-
-          <label className="field">
-            <span>Ordenação</span>
-            <select value={filters.sort} onChange={(event) => updateFilter("sort", event.target.value)}>
-              <option value="nearest">Mais próximos</option>
-              <option value="name">Nome</option>
-            </select>
-          </label>
-        </div>
-
-        <div className="inline-actions">
-          <button type="button" className="primary-button">Pesquisar</button>
-          <button type="button" className="secondary-button" onClick={clearFilters}>Limpar filtros</button>
-        </div>
-      </div>
-
-      <div className="results-header">
-        <h2>Jogadores encontrados</h2>
-        <span>{filteredPlayers.length} resultado(s)</span>
-      </div>
-
-      <div className="cards-grid">
-        {filteredPlayers.length === 0 ? (
-          <div className="empty-state">
-            <h3>Nenhum jogador encontrado</h3>
-            <p>Não há perfis disponíveis para os filtros selecionados.</p>
-          </div>
-        ) : filteredPlayers.map((player) => {
-          const skill = skillLevels.find((item) => item.id === player.skillLevelId);
-
-          return (
-            <article key={player.id} className="player-card">
-              <img src={player.profileImageUrl} alt={player.name} className="player-avatar" />
-              <div className="player-card-body">
-                <h3>{player.name}</h3>
-                <p>{player.city} - {player.state}</p>
-                <div className="player-meta">
-                  <span>{skill?.name ?? "Nível"}</span>
-                  <span>{player.active ? "Disponível" : "Indisponível"}</span>
-                </div>
-                <a href={`/jogadores/${player.id}`} className="secondary-button player-button">Ver perfil</a>
-              </div>
-            </article>
-          );
-        })}
-      </div>
-    </div>
+    <form action="/jogadores" className="form-card">
+      <label className="field">
+        Nome público
+        <input name="query" maxLength={80} defaultValue={values.query} />
+      </label>
+      <label className="field">
+        Cidade
+        <input name="city" maxLength={120} defaultValue={values.city} />
+      </label>
+      <label className="field">
+        UF
+        <select name="state" defaultValue={values.state}>
+          <option value="">Todas</option>
+          {"AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO"
+            .split(" ")
+            .map((s) => (
+              <option key={s}>{s}</option>
+            ))}
+        </select>
+      </label>
+      <label className="field">
+        Esporte
+        <select name="sport" defaultValue={values.sport}>
+          <option value="">Todos</option>
+          {sports.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="field">
+        Nível no esporte
+        <select name="level" defaultValue={values.level}>
+          <option value="">Todos</option>
+          {levels.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="field">
+        Data disponível
+        <input name="date" type="date" defaultValue={values.date} />
+      </label>
+      <label className="field">
+        Período
+        <select name="period" defaultValue={values.period}>
+          <option value="">Qualquer</option>
+          <option value="madrugada">00h–06h</option>
+          <option value="manha">06h–12h</option>
+          <option value="tarde">12h–18h</option>
+          <option value="noite">18h–24h</option>
+        </select>
+      </label>
+      <p>
+        Escolha esporte ao filtrar nível, e data ao filtrar período. Horários no
+        fuso declarado pelo jogador; ordem alfabética. Nenhuma distância é
+        estimada.
+      </p>
+      <button className="primary-button">Pesquisar jogadores</button>
+      <Link href="/jogadores">Limpar filtros</Link>
+    </form>
   );
 }
-

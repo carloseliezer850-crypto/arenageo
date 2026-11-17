@@ -1,4 +1,4 @@
-import { obterToken } from "@/services/sessao";
+import { validarSessao } from "@/services/sessao";
 import type { Metadata } from "next";
 import { Cabecalho } from "@/components/Cabecalho";
 import { Rodape } from "@/components/Rodape";
@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 };
 
 export default async function QuadroTaticoPage() {
-  const connected = Boolean(await obterToken());
+  const connected = (await validarSessao()) === "authenticated";
   return (
     <div className="app-shell">
       <Cabecalho />

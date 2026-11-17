@@ -6,7 +6,7 @@ import { Rodape } from "@/components/Rodape";
 import { PaginaRota } from "@/components/PaginaRota";
 import { AcoesPartida } from "@/components/AcoesPartida";
 import { lerPartida } from "@/services/servicoPartida";
-import { obterToken } from "@/services/sessao";
+import { validarSessao } from "@/services/sessao";
 export default async function MatchDetailPage({
   params,
 }: {
@@ -56,7 +56,7 @@ export default async function MatchDetailPage({
           <aside className="info-card">
             <AcoesPartida
               match={match}
-              connected={Boolean(await obterToken())}
+              connected={(await validarSessao()) === "authenticated"}
             />
           </aside>
         </div>

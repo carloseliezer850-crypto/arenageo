@@ -34,7 +34,7 @@ export default async function PaginaInicial() {
             <ListaPartidas matches={matches.value} sports={sports.value} skillLevels={skillLevels.value} />
           )}
           {players.status === "fulfilled" && skillLevels.status === "fulfilled" && (
-            <ListaJogadores players={players.value} skillLevels={skillLevels.value} />
+            <ListaJogadores players={players.value} />
           )}
           {(sports.status === "rejected" || skillLevels.status === "rejected") && (
             <p role="alert">Não foi possível carregar os catálogos. <Link href="/">Tentar novamente</Link></p>

@@ -160,7 +160,11 @@ public class PartidaService {
             + " where m.id_organizador=? or exists(select 1 from tb_partida_participante v where"
             + " v.id_partida=m.id_partida and v.id_usuario=? and v.nm_status<>'CANCELADA') order by"
             + " m.dt_inicio desc,m.id_partida desc limit 100",
-        this::view,
+        (r, n) -> {
+          var v = view(r, n);
+          v.put("canManage", r.getInt("id_organizador") == user);
+          return v;
+        },
         user,
         user);
   }

@@ -6,7 +6,7 @@ import { Cabecalho } from "@/components/Cabecalho";
 import { Rodape } from "@/components/Rodape";
 import { PaginaRota } from "@/components/PaginaRota";
 import { buscarArenas, type ArenaResumo } from "@/services/servicoArena";
-import { obterToken } from "@/services/sessao";
+import { obterToken, validarSessao } from "@/services/sessao";
 import { ErroApi } from "@/api/cliente";
 
 export default async function DashboardPage({
@@ -15,7 +15,9 @@ export default async function DashboardPage({
   searchParams: Promise<{ cidade?: string | string[]; uf?: string }>;
 }) {
   const token = await obterToken();
-  if (!token) redirect("/entrar");
+  const session = await validarSessao();
+  if (!token || session === "anonymous") redirect("/entrar");
+  if (session === "unavailable") throw new Error("Não foi possível validar a sessão.");
   const jogos = await minhasPartidas()
     .then((items) => ({ items, error: false }))
     .catch(() => ({ items: [], error: true }));

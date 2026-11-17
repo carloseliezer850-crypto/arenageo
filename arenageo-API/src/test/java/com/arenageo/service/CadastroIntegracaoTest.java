@@ -444,6 +444,159 @@ class CadastroIntegracaoTest {
         RecursoNaoEncontradoException.class, () -> gestao.lerEmpresa(999, result.idPerfil()));
   }
 
+  @Autowired DescobertaJogadorService descoberta;
+
+  DescobertaJogadorService.Config publicConfig(
+      boolean visible, int revision, List<DescobertaJogadorService.Slot> slots) {
+    return new DescobertaJogadorService.Config(
+        visible,
+        "Nome público",
+        "Bagé",
+        "RS",
+        "Gosto de jogar",
+        "America/Sao_Paulo",
+        java.time.LocalDate.now(java.time.ZoneId.of("America/Sao_Paulo")).plusDays(30),
+        revision,
+        slots);
+  }
+
+  @Test
+  void descobertaExigeOptInNaoExibeDadosPessoaisEPodePausar() {
+    int user = jogadores.cadastrar(player()).user().id();
+    int id = db.queryForObject("select id_jogador from tb_jogador", Integer.class);
+    assertThrows(RecursoNaoEncontradoException.class, () -> descoberta.detail(id));
+    assertEquals(
+        0L, ((Map<?, ?>) descoberta.search("", "", "", null, null, null, "", 0)).get("total"));
+    var slots = List.of(new DescobertaJogadorService.Slot(1, 1080, 1320));
+    descoberta.save(user, publicConfig(true, 0, slots));
+    var publicData = (Map<?, ?>) descoberta.detail(id);
+    assertEquals(
+        Set.of(
+            "id",
+            "name",
+            "username",
+            "city",
+            "state",
+            "bio",
+            "timezone",
+            "validUntil",
+            "sports",
+            "slots"),
+        publicData.keySet());
+    assertEquals("Nome público", publicData.get("name"));
+    assertEquals(
+        1L,
+        ((Map<?, ?>) descoberta.search("publico", "bage", "RS", null, null, null, "", 0))
+            .get("total"));
+    assertThrows(
+        CadastroDuplicadoException.class,
+        () -> descoberta.save(user, publicConfig(false, 0, slots)));
+    descoberta.save(user, publicConfig(false, 1, slots));
+    assertThrows(RecursoNaoEncontradoException.class, () -> descoberta.detail(id));
+    descoberta.save(user, publicConfig(true, 2, slots));
+    db.update("update tb_jogador_descoberta set dt_validade=current_date-1");
+    assertThrows(RecursoNaoEncontradoException.class, () -> descoberta.detail(id));
+    assertFalse(
+        Boolean.TRUE.equals(
+            db.queryForObject(
+                "select has_table_privilege('anon','tb_jogador_descoberta','SELECT') or"
+                    + " has_table_privilege('authenticated','tb_jogador_disponibilidade','INSERT')",
+                Boolean.class)));
+  }
+
+  @Test
+  void descobertaFiltraNivelNoEsporteEHorarioDeclarado() {
+    int user = jogadores.cadastrar(player()).user().id();
+    int id = db.queryForObject("select id_jogador from tb_jogador", Integer.class);
+    var sports =
+        db.queryForList(
+            "select id_esporte from tb_esporte where fl_ativo order by id_esporte", Integer.class);
+    var levels =
+        db.queryForList(
+            "select id_nivel_habilidade from tb_nivel_habilidade where fl_ativo order by"
+                + " id_nivel_habilidade",
+            Integer.class);
+    db.update("delete from tb_jogador_esporte where id_jogador=?", id);
+    db.update(
+        "insert into tb_jogador_esporte(id_jogador,id_esporte,id_nivel_habilidade) values"
+            + " (?,?,?),(?,?,?)",
+        id,
+        sports.get(0),
+        levels.get(0),
+        id,
+        sports.get(1),
+        levels.get(1));
+    var date = java.time.LocalDate.now(java.time.ZoneId.of("America/Sao_Paulo")).plusDays(1);
+    var slots =
+        List.of(new DescobertaJogadorService.Slot(date.getDayOfWeek().getValue(), 1080, 1320));
+    descoberta.save(user, publicConfig(true, 0, slots));
+    assertEquals(
+        1L,
+        ((Map<?, ?>) descoberta.search("", "", "", sports.get(0), levels.get(0), date, "noite", 0))
+            .get("total"));
+    assertEquals(
+        0L,
+        ((Map<?, ?>) descoberta.search("", "", "", sports.get(0), levels.get(1), date, "noite", 0))
+            .get("total"));
+    assertEquals(
+        0L, ((Map<?, ?>) descoberta.search("", "", "", null, null, date, "manha", 0)).get("total"));
+    assertEquals(
+        0L,
+        ((Map<?, ?>) descoberta.search("", "", "", null, null, date.plusDays(1), "noite", 0))
+            .get("total"));
+    assertThrows(
+        RegraNegocioException.class,
+        () -> descoberta.search("", "", "", null, levels.get(0), null, "", 0));
+    assertThrows(
+        RegraNegocioException.class,
+        () -> descoberta.search("", "", "", null, null, null, "noite", 0));
+    assertThrows(
+        RegraNegocioException.class,
+        () ->
+            descoberta.save(
+                user,
+                publicConfig(
+                    true,
+                    1,
+                    List.of(
+                        new DescobertaJogadorService.Slot(1, 100, 200),
+                        new DescobertaJogadorService.Slot(1, 150, 250)))));
+    assertEquals(1, ((Map<?, ?>) descoberta.config(user)).get("revision"));
+  }
+
+  @Test
+  void sessaoValidaRevogacaoEPerfilPrivadoNaoFicaPublico() throws Exception {
+    var auth = jogadores.cadastrar(player());
+    var http = java.net.http.HttpClient.newHttpClient();
+    for (String path : List.of("/usuarios/sessao", "/jogadores/me", "/jogadores/me/descoberta")) {
+      var uri = java.net.URI.create("http://localhost:" + port + path);
+      assertEquals(
+          401,
+          http.send(
+                  java.net.http.HttpRequest.newBuilder(uri).GET().build(),
+                  java.net.http.HttpResponse.BodyHandlers.ofString())
+              .statusCode());
+      assertEquals(
+          200,
+          http.send(
+                  java.net.http.HttpRequest.newBuilder(uri)
+                      .header("Authorization", "Bearer " + auth.token())
+                      .GET()
+                      .build(),
+                  java.net.http.HttpResponse.BodyHandlers.ofString())
+              .statusCode());
+    }
+    db.update("update tb_usuario set nr_sessao=nr_sessao+1 where id_usuario=?", auth.user().id());
+    var req =
+        java.net.http.HttpRequest.newBuilder(
+                java.net.URI.create("http://localhost:" + port + "/usuarios/sessao"))
+            .header("Authorization", "Bearer " + auth.token())
+            .GET()
+            .build();
+    assertEquals(
+        401, http.send(req, java.net.http.HttpResponse.BodyHandlers.ofString()).statusCode());
+  }
+
   @Autowired PrivacidadeConviteService privacidade;
 
   @Test

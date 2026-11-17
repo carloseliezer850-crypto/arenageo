@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { obterToken } from "@/services/sessao";
+import { validarSessao } from "@/services/sessao";
 import { obterEsportes } from "@/services/servicoEsporte";
 import { obterNiveisHabilidade } from "@/services/servicoNivelHabilidade";
 import { Cabecalho } from "@/components/Cabecalho";
@@ -8,7 +8,9 @@ import { PaginaRota } from "@/components/PaginaRota";
 import { FormularioCriarPartida } from "@/components/FormularioCriarPartida";
 
 export default async function CriarPartidaPage() {
-  if (!(await obterToken())) redirect("/entrar");
+  const session = await validarSessao();
+  if (session === "anonymous") redirect("/entrar");
+  if (session === "unavailable") throw new Error("Não foi possível validar a sessão.");
   const [sports, levels] = await Promise.all([
     obterEsportes(),
     obterNiveisHabilidade(),
