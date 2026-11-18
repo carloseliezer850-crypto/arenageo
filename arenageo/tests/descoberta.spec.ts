@@ -70,6 +70,9 @@ test("descoberta é voluntária, filtros persistem e cookie forjado não autenti
   await expect(
     page.getByText("Descoberta atualizada.", { exact: true }),
   ).toBeVisible();
+  await expect(page.getByLabel("Disponível até", { exact: true })).toHaveValue(
+    /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/,
+  );
   const anonymous = await page
     .context()
     .browser()!

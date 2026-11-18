@@ -53,7 +53,7 @@ public class DescobertaJogadorService {
     var rows =
         db.queryForList(
             "select fl_visivel as visible,nm_publico as name,nm_cidade as city,nm_uf as"
-                + " state,ds_bio as bio,nm_fuso as timezone,dt_validade as"
+                + " state,ds_bio as bio,nm_fuso as timezone,to_char(dt_validade,'YYYY-MM-DD') as"
                 + " \"validUntil\",nr_revisao as revision from tb_jogador_descoberta where"
                 + " id_jogador=?",
             id);
@@ -169,8 +169,8 @@ public class DescobertaJogadorService {
           + " zone d.nm_fuso)::date";
   private static final String SELECT =
       "select d.id_jogador as id,d.nm_publico as name,p.nm_nome_usuario as username,d.nm_cidade as"
-          + " city,d.nm_uf as state,d.ds_bio as bio,d.nm_fuso as timezone,d.dt_validade as"
-          + " \"validUntil\"";
+          + " city,d.nm_uf as state,d.ds_bio as bio,d.nm_fuso as"
+          + " timezone,to_char(d.dt_validade,'YYYY-MM-DD') as \"validUntil\"";
 
   private String fold(String expr) {
     return "translate(lower(" + expr + "),'áàâãäéèêëíìîïóòôõöúùûüç','aaaaaeeeeiiiiooooouuuuc')";

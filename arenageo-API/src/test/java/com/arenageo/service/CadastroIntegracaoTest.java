@@ -490,6 +490,10 @@ class CadastroIntegracaoTest {
     descoberta.save(user, publicConfig(true, 0, slots));
     var publicData = (Map<?, ?>) descoberta.detail(id);
     assertEquals(
+        publicConfig(true, 0, slots).validUntil().toString(), publicData.get("validUntil"));
+    assertEquals(
+        publicData.get("validUntil"), ((Map<?, ?>) descoberta.config(user)).get("validUntil"));
+    assertEquals(
         Set.of(
             "id",
             "name",

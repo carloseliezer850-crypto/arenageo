@@ -92,7 +92,13 @@ test("jogador, perfil, empresa, arena publicada e segunda arena", async ({
     .getByRole("button", { name: "Adicionar espaço", exact: true })
     .click();
   await page.locator('[name="spaces[0].name"]').fill("Quadra 1");
-  await page.locator("fieldset").first().getByRole("checkbox").nth(1).check();
+  const spaceSport = page
+    .locator("fieldset")
+    .first()
+    .getByRole("checkbox")
+    .nth(1);
+  const spaceSportName = (await spaceSport.locator("..").innerText()).trim();
+  await spaceSport.check();
   await page
     .getByRole("button", { name: "Adicionar período", exact: true })
     .click();
@@ -157,7 +163,9 @@ test("jogador, perfil, empresa, arena publicada e segunda arena", async ({
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/criar-partida");
   await page.locator('[name="title"]').fill("Partida E2E gratuita");
-  await page.locator('[name="sportId"]').selectOption({ index: 1 });
+  await page
+    .locator('[name="sportId"]')
+    .selectOption({ label: spaceSportName });
   await page.locator('[name="skillLevelId"]').selectOption({ index: 1 });
   const bookingDay = new Date(Date.now() + 7 * 86400000);
   while (bookingDay.getUTCDay() !== 1)
@@ -233,6 +241,36 @@ test("jogador, perfil, empresa, arena publicada e segunda arena", async ({
   await expect(
     page.getByText("Pagamento pendente no local", { exact: false }),
   ).toBeVisible();
+  const sessionToken = (await page.context().cookies()).find(
+    (c) => c.name === "arenageo_sessao",
+  )!.value;
+  const apiHeaders = { Authorization: `Bearer ${sessionToken}` };
+  const matchData = await (
+    await page.request.get(
+      "http://localhost:8088" + new URL(matchUrl).pathname,
+      { headers: apiHeaders },
+    )
+  ).json();
+  const bookingData = await (
+    await page.request.get(
+      "http://localhost:8088" + new URL(bookingUrl).pathname,
+      { headers: apiHeaders },
+    )
+  ).json();
+  expect({ start: matchData.dateTime, end: matchData.endTime }).toEqual({
+    start: bookingData.start,
+    end: bookingData.end,
+  });
+  const compatible = await page.request.get(
+    "http://localhost:8088" +
+      new URL(matchUrl).pathname +
+      "/reservas-compativeis",
+    { headers: apiHeaders },
+  );
+  expect(compatible.ok()).toBeTruthy();
+  expect((await compatible.json()).map((r: { id: number }) => r.id)).toContain(
+    bookingData.id,
+  );
   await page.goto(matchUrl);
   await page
     .getByLabel("Reserva compatível", { exact: true })
