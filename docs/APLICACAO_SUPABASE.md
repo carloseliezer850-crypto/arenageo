@@ -1,4 +1,4 @@
-# Aplicação no Supabase — atualizado em 17/11/2026
+# Aplicação no Supabase — atualizado em 18/11/2026
 
 Projeto ArenaGeo: `uxvhscoqmttkffrmmkvn`. Aplicação autorizada pelo usuário e concluída em 13/11/2026, aproximadamente 16h12–16h14 (America/Sao_Paulo).
 
@@ -16,6 +16,9 @@ O conector gera a versão remota no instante da aplicação. Os arquivos de orig
 | 20261115170926 | convites_notificacoes | 20261115172454 |
 | 20261116182624 | quadro_compartilhamento | 20261116183451 |
 | 20261117182006 | privacidade_convites | 20261117182934 |
+| 20261117185958 | descoberta_jogadores | 20261118200017 |
+| 20261117191650 | partida_reserva | 20261118200030 |
+| 20261118195013 | aprovacao_participantes | 20261118200042 |
 
 As quatro primeiras migrations foram aplicadas sem alteração do SQL já testado. O verificador apontou `btree_gist` em `public`; a quinta migration moveu a extensão para `extensions`, preservando a restrição de exclusão existente. As tabelas anteriores e os dados de clientes não foram excluídos ou substituídos.
 
@@ -52,3 +55,13 @@ Migration `quadro_compartilhamento` aplicada após aprovação do [CI 4392974976
 Migration aplicada após aprovação do [CI 44147797863](https://github.com/carloseliezer850-crypto/arenageo/actions/runs/44147797863), commit `19a211cf19529bbc289517f7d9f87dd6dd53d8cd`: 37 testes backend, 4 do modelo tático e 5 Playwright, typecheck, lint e build. O E2E verifica persistência da preferência após atualizar a página e bloqueio/desbloqueio de remetente.
 
 Histórico remoto conferido. Tabelas `tb_convite_preferencia` e `tb_convite_bloqueio` com RLS ativo e sem privilégios SELECT/INSERT/UPDATE/DELETE/TRUNCATE para anon/authenticated. Advisor sem ERROR/WARN; 29 informações de RLS sem policies, conforme acesso exclusivo pela API Spring. Não foram alteradas preferências ou convites de clientes durante a aplicação. Sem merge/deploy da aplicação.
+
+## Descoberta, vínculo de reserva e aprovação — 18/11/2026
+
+As três migrations foram aplicadas após 46 testes backend locais aprovados e aprovação das etapas de backend/typecheck/lint/build no CI. A aplicação de DDL foi concluída enquanto a instalação do navegador no GitHub Actions permanecia demorada; isso não representa aprovação final do E2E nem validação de lançamento. Run posteriormente aprovado: [44385690264](https://github.com/carloseliezer850-crypto/arenageo/actions/runs/44385690264), commit `0015e4433b6053e7b85c52039829082551789a40`.
+
+Histórico remoto, novas tabelas, índice único `uq_partida_reserva`, índice do decisor e enum ampliado de participação conferidos. `tb_jogador_descoberta`, `tb_jogador_disponibilidade`, `tb_partida` e `tb_partida_participante` estão com RLS e sem privilégios SELECT/INSERT/UPDATE/DELETE/TRUNCATE de anon/authenticated. Nenhum perfil existente foi publicado e nenhuma reserva/inscrição de cliente foi alterada pela aplicação.
+
+Advisor de segurança: zero ERROR/WARN, 31 informações de RLS sem policies, intencionais nesta arquitetura com acesso exclusivo pela API Spring. [Referência](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy). Código permanece na branch/PR, sem merge ou deploy.
+
+Validação final concluída: CI 44385690264 aprovado com 46 testes backend, 4 do modelo tático e 7 Playwright, incluindo criação por aprovação, solicitação sem ocupar vaga, decisão do organizador e confirmação após recarregar. Typecheck, lint e build aprovados; um aviso preexistente de imagem no lint.
