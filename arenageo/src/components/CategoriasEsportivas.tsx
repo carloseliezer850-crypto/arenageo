@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Sport } from "@/types/esporte";
 
 type CategoriasEsportivasProps = {
@@ -16,10 +17,10 @@ export function CategoriasEsportivas({ sports }: CategoriasEsportivasProps) {
 
       <div className="sport-grid">
         {sports.map((sport) => (
-          <button key={sport.id} type="button" className="sport-card">
+          <Link key={sport.id} href={`/partidas?esporte=${sport.id}`} className="sport-card">
             <span className="sport-icon" aria-hidden="true" />
             <span>{sport.name}</span>
-          </button>
+          </Link>
         ))}
       </div>
     </section>

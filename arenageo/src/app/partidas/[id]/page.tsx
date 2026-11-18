@@ -1,52 +1,107 @@
+import Link from "next/link";
+import { SolicitacoesPartida } from "@/components/SolicitacoesPartida";
+import { LocalPartida } from "@/components/LocalPartida";
+import { ConvidarPartida } from "@/components/Comunicacao";
 import { notFound } from "next/navigation";
+import { ErroApi } from "@/api/cliente";
 import { Cabecalho } from "@/components/Cabecalho";
 import { Rodape } from "@/components/Rodape";
 import { PaginaRota } from "@/components/PaginaRota";
-import { obterPartidas } from "@/services/servicoPartida";
-import { obterEsportes } from "@/services/servicoEsporte";
-import { obterNiveisHabilidade } from "@/services/servicoNivelHabilidade";
-
-export default async function MatchDetailPage({ params }: { params: Promise<{ id: string }> }) {
+import { AcoesPartida } from "@/components/AcoesPartida";
+import {
+  lerPartida,
+  reservasCompativeis,
+  solicitacoesPartida,
+} from "@/services/servicoPartida";
+import { validarSessao } from "@/services/sessao";
+export default async function MatchDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = await params;
-  const [matches, sports, skillLevels] = await Promise.all([obterPartidas(), obterEsportes(), obterNiveisHabilidade()]);
-  const match = matches.find((item) => item.id === Number(id));
-
-  if (!match) {
-    notFound();
-  }
-
-  const sport = sports.find((item) => item.id === match.sportId);
-  const skill = skillLevels.find((item) => item.id === match.skillLevelId);
-
+  if (!/^\d+$/.test(id) || !Number.isSafeInteger(Number(id))) notFound();
+  const match = await lerPartida(Number(id)).catch((e) => {
+    if (e instanceof ErroApi && e.status === 404) notFound();
+    throw e;
+  });
+  const manageVenue = Boolean(match.canChangeVenue);
+  const options = manageVenue ? await reservasCompativeis(match.id) : [];
+  const requests =
+    match.canManage && match.accepting && match.requiresApproval
+      ? await solicitacoesPartida(match.id)
+      : [];
+  const format = (date: string) =>
+    new Date(date).toLocaleString("pt-BR", {
+      timeZone: match.timezone,
+      dateStyle: "short",
+      timeStyle: "short",
+    });
   return (
     <div className="app-shell">
       <Cabecalho />
       <PaginaRota title={match.title} description={match.description}>
         <div className="detail-layout">
-          <section className="info-card detail-card">
-            <div className="detail-meta">
-              <span className="badge">{sport?.name ?? "Esporte"}</span>
-              <span className="status-tag">{match.statusId === 1 ? "Aberta" : "Cheia"}</span>
-            </div>
-            <ul className="detail-list">
-              <li><strong>Data:</strong> {new Date(match.dateTime).toLocaleDateString("pt-BR")}</li>
-              <li><strong>Horário:</strong> {new Date(match.dateTime).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</li>
-              <li><strong>Duração:</strong> {match.durationMinutes} minutos</li>
-              <li><strong>Local:</strong> {match.city} - {match.state}</li>
-              <li><strong>Nível:</strong> {skill?.name ?? "Nível"}</li>
-              <li><strong>Participantes:</strong> {match.currentPlayers} / {match.maxPlayers}</li>
-              <li><strong>Vagas:</strong> {Math.max(match.maxPlayers - match.currentPlayers, 0)}</li>
-              <li><strong>Visibilidade:</strong> {match.visibility}</li>
-            </ul>
+          <section className="info-card">
+            <p>
+              {match.status} ·{" "}
+              {match.currentPlayers >= match.maxPlayers
+                ? "Sem vagas imediatas"
+                : "Vagas disponíveis"}
+            </p>
+            <p>Organizador: {match.organizer}</p>
+            <p>
+              {format(match.dateTime)} até {format(match.endTime)} (
+              {match.timezone})
+            </p>
+            <p>
+              {match.location} · {match.city} / {match.state}
+            </p>
+            {match.venue ? (
+              <section aria-label="Local vinculado">
+                <p>
+                  {match.venue.arena} · {match.venue.space}
+                </p>
+                <p>
+                  {match.venue.status === "CONFIRMADA"
+                    ? "Local com reserva confirmada"
+                    : match.venue.status === "CANCELADA"
+                      ? "Reserva cancelada — local a confirmar com o organizador"
+                      : `Situação da reserva: ${match.venue.status}`}
+                </p>
+                <Link href={`/arenas/${match.venue.arenaId}`}>
+                  Consultar arena e espaços
+                </Link>
+              </section>
+            ) : (
+              <p>
+                Local a confirmar com o organizador. Não há reserva de quadra
+                vinculada.
+              </p>
+            )}
+            <p>
+              Gratuita · {match.currentPlayers} de {match.maxPlayers}{" "}
+              participantes confirmados
+            </p>
           </section>
-
-          <aside className="info-card sidebar-card">
-            <h3>Resumo da partida</h3>
-            <p>Organizador: {match.creatorId}</p>
-            <p>{match.description}</p>
-            <button type="button" className="primary-button">Entrar na partida</button>
+          <aside className="info-card">
+            <AcoesPartida
+              match={match}
+              connected={(await validarSessao()) === "authenticated"}
+            />
           </aside>
         </div>
+        {match.canManage && match.accepting && match.requiresApproval && (
+          <SolicitacoesPartida
+            id={match.id}
+            version={match.version}
+            requests={requests}
+          />
+        )}
+        {manageVenue && <LocalPartida match={match} options={options} />}
+        {match.canManage && match.accepting && (
+          <ConvidarPartida id={match.id} />
+        )}
       </PaginaRota>
       <Rodape />
     </div>

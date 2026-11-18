@@ -25,6 +25,7 @@ export default async function Page() {
       <Link href="/painel">Voltar ao painel</Link>
       {profile ? (
         <>
+          <Link href="/perfil/descoberta">Privacidade e disponibilidade para encontrar jogadores</Link>
           <PerfilJogador initial={profile} />
           <Galeria />
           <ReenviarConfirmacao />

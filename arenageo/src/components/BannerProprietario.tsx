@@ -1,3 +1,4 @@
+import Link from "next/link";
 export function BannerProprietario() {
   return (
     <section className="owner-banner" id="owners" aria-labelledby="owner-heading">
@@ -11,9 +12,9 @@ export function BannerProprietario() {
           </p>
         </div>
 
-        <button type="button" className="primary-button light">
+        <Link href="/cadastro/empresa" className="primary-button light">
           Anunciar minha arena
-        </button>
+        </Link>
       </div>
     </section>
   );

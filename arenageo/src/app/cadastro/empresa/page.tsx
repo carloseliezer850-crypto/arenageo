@@ -3,11 +3,13 @@ import { Rodape } from "@/components/Rodape";
 import { PaginaRota } from "@/components/PaginaRota";
 import { FormularioCadastroEmpresa } from "@/components/FormularioCadastroEmpresa";
 
-import { obterToken } from "@/services/sessao";
+import { validarSessao } from "@/services/sessao";
 import Link from "next/link";
 
 export default async function RegisterBusinessPage() {
-  const contaExistente = Boolean(await obterToken());
+  const session = await validarSessao();
+  if (session === "unavailable") throw new Error("Não foi possível validar a sessão.");
+  const contaExistente = session === "authenticated";
   return (
     <div className="app-shell">
       <Cabecalho />

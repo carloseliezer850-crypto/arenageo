@@ -115,17 +115,24 @@ public class GestaoArenaService {
             e.getNmComplemento(),
             e.getNrLatitude(),
             e.getNrLongitude());
+    Map<Long, List<Integer>> sportsBySpace = new HashMap<>();
+    db.query(
+        "select es.id_espaco,es.id_esporte from tb_espaco_esporte es join tb_espaco s"
+            + " using(id_espaco) where s.id_arena=? and s.fl_ativo order by es.id_esporte",
+        (org.springframework.jdbc.core.RowCallbackHandler)
+            rs ->
+                sportsBySpace
+                    .computeIfAbsent(rs.getLong("id_espaco"), key -> new ArrayList<>())
+                    .add(rs.getInt("id_esporte")),
+        id);
     var spaces =
         db.query(
-            "select * from tb_espaco where id_arena=? order by id_espaco",
+            "select * from tb_espaco where id_arena=? and fl_ativo order by id_espaco",
             (rs, n) ->
                 new EspacoDto(
+                    rs.getLong("id_espaco"),
                     rs.getString("nm_nome"),
-                    db.queryForList(
-                        "select id_esporte from tb_espaco_esporte where id_espaco=? order by"
-                            + " id_esporte",
-                        Integer.class,
-                        rs.getLong("id_espaco")),
+                    sportsBySpace.getOrDefault(rs.getLong("id_espaco"), List.of()),
                     rs.getBoolean("fl_coberto"),
                     rs.getString("nm_piso"),
                     (Integer) rs.getObject("nr_capacidade"),
@@ -180,6 +187,29 @@ public class GestaoArenaService {
   @Transactional
   public GestaoArenaDto salvar(Integer user, Integer id, GestaoArenaDto d) {
     var a = propria(user, id, true);
+    var current = ler(user, id);
+    var futureSpaces =
+        db.queryForList(
+            "select distinct r.id_espaco from tb_reserva r join tb_espaco s using(id_espaco) where"
+                + " s.id_arena=? and r.nm_status='CONFIRMADA' and"
+                + " r.dt_fim_bloqueio>current_timestamp",
+            Long.class,
+            id);
+    if (!futureSpaces.isEmpty()
+        && (!current.timezone().equals(d.timezone())
+            || !current.hours().equals(d.hours())
+            || !current.exceptions().equals(d.exceptions())
+            || (current.publish() && !d.publish())
+            || !d.spaces().stream()
+                .map(EspacoDto::id)
+                .filter(Objects::nonNull)
+                .toList()
+                .containsAll(futureSpaces)))
+      throw new CadastroDuplicadoException(
+          "FUTURE_BOOKINGS",
+          null,
+          "Existem reservas ou bloqueios futuros. Resolva-os na agenda antes de alterar horários,"
+              + " fuso, publicação ou remover espaços ocupados.");
     validarHorarios(d.hours());
     try {
       ZoneId.of(d.timezone());
@@ -242,7 +272,7 @@ public class GestaoArenaService {
     var e = enderecos.findByArena_IdArenaAndFlPrincipalTrue(id).orElseThrow();
     e.setNmCidade(d.address().city().trim());
     e.setNmUf(d.address().state());
-    e.setNmCep(com.arenageo.util.DocumentoUtils.somenteDigitos(d.address().zipCode()));
+    e.setNmCep(com.arenageo.util.DocumentoUtils.cepOpcional(d.address().zipCode()));
     e.setNmBairro(d.address().neighborhood());
     e.setNmLogradouro(d.address().street());
     e.setNmNumero(d.address().number());
@@ -259,21 +289,45 @@ public class GestaoArenaService {
     a.setStatusPublicacao(
         d.publish() ? "PUBLICADO" : d.spaces().isEmpty() ? "INCOMPLETO" : "RASCUNHO");
     db.update("update tb_arena set nm_fuso=? where id_arena=?", d.timezone(), id);
-    db.update("delete from tb_espaco where id_arena=?", id);
+    Set<Long> ids = new HashSet<>();
     for (var space : d.spaces()) {
-      Long spaceId =
-          db.queryForObject(
-              "insert into"
-                  + " tb_espaco(id_arena,nm_nome,fl_coberto,nm_piso,nr_capacidade,nr_largura,nr_comprimento)"
-                  + " values(?,?,?,?,?,?,?) returning id_espaco",
-              Long.class,
-              id,
-              space.name().trim(),
-              space.covered(),
-              space.floor(),
-              space.capacity(),
-              space.width(),
-              space.length());
+      Long spaceId = space.id();
+      if (spaceId != null) {
+        if (!ids.add(spaceId)
+            || db.update(
+                    "update tb_espaco set"
+                        + " nm_nome=?,fl_coberto=?,nm_piso=?,nr_capacidade=?,nr_largura=?,nr_comprimento=?"
+                        + " where id_espaco=? and id_arena=? and fl_ativo",
+                    space.name().trim(),
+                    space.covered(),
+                    space.floor(),
+                    space.capacity(),
+                    space.width(),
+                    space.length(),
+                    spaceId,
+                    id)
+                != 1)
+          throw new RegraNegocioException(
+              "RESOURCE_INVALID",
+              "spaces",
+              "Espaço inválido, repetido ou inativo. Recarregue a arena.");
+        db.update("delete from tb_espaco_esporte where id_espaco=?", spaceId);
+      } else {
+        spaceId =
+            db.queryForObject(
+                "insert into"
+                    + " tb_espaco(id_arena,nm_nome,fl_coberto,nm_piso,nr_capacidade,nr_largura,nr_comprimento)"
+                    + " values(?,?,?,?,?,?,?) returning id_espaco",
+                Long.class,
+                id,
+                space.name().trim(),
+                space.covered(),
+                space.floor(),
+                space.capacity(),
+                space.width(),
+                space.length());
+        ids.add(spaceId);
+      }
       Set<Integer> sports = new HashSet<>();
       for (Integer sport : space.sportIds()) {
         if (!sports.add(sport)
@@ -289,6 +343,12 @@ public class GestaoArenaService {
         db.update("insert into tb_espaco_esporte values(?,?)", spaceId, sport);
       }
     }
+    // Retain physical resources and their associations for future reservation history.
+    for (Long old :
+        db.queryForList(
+            "select id_espaco from tb_espaco where id_arena=? and fl_ativo", Long.class, id))
+      if (!ids.contains(old))
+        db.update("update tb_espaco set fl_ativo=false where id_espaco=?", old);
     db.update("delete from tb_arena_horario where id_arena=?", id);
     for (var h : d.hours())
       db.update("insert into tb_arena_horario values(?,?,?,?)", id, h.day(), h.start(), h.end());
@@ -352,7 +412,7 @@ public class GestaoArenaService {
         ValidacaoCadastro.telefone(c.businessPhone(), true, "company.businessPhone"));
     e.setNmEmailComercial(c.businessEmail());
     var a = enderecos.findByEmpresa_IdEmpresaAndFlPrincipalTrue(id).orElseThrow();
-    a.setNmCep(com.arenageo.util.DocumentoUtils.somenteDigitos(d.address().zipCode()));
+    a.setNmCep(com.arenageo.util.DocumentoUtils.cepOpcional(d.address().zipCode()));
     a.setNmUf(d.address().state());
     a.setNmCidade(d.address().city());
     a.setNmBairro(d.address().neighborhood());

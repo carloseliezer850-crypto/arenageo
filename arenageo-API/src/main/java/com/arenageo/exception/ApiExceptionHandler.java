@@ -60,6 +60,12 @@ public class ApiExceptionHandler {
   public ResponseEntity<ErroApiDto> tratarIntegridade(DataIntegrityViolationException exception) {
     Throwable cause = exception;
     while (cause != null) {
+      if (cause instanceof java.sql.SQLException sql && "23P01".equals(sql.getSQLState()))
+        return resposta(
+            HttpStatus.CONFLICT,
+            "Este horário acabou de ser ocupado. Consulte a agenda novamente.",
+            Map.of(),
+            "BOOKING_CONFLICT");
       if (cause instanceof java.sql.SQLException sql && "23505".equals(sql.getSQLState()))
         return resposta(
             HttpStatus.CONFLICT,
@@ -90,6 +96,19 @@ public class ApiExceptionHandler {
       org.springframework.web.multipart.MaxUploadSizeExceededException e) {
     return resposta(
         HttpStatus.PAYLOAD_TOO_LARGE, "A imagem deve ter até 5 MB.", Map.of(), "IMAGE_TOO_LARGE");
+  }
+
+  @ExceptionHandler({
+    org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class,
+    org.springframework.web.bind.MissingRequestHeaderException.class,
+    org.springframework.web.bind.MissingServletRequestParameterException.class
+  })
+  public ResponseEntity<ErroApiDto> tratarParametro(Exception e) {
+    return resposta(
+        HttpStatus.BAD_REQUEST,
+        "Revise os parâmetros da solicitação.",
+        Map.of(),
+        "REQUEST_INVALID");
   }
 
   @ExceptionHandler(Exception.class)

@@ -1,11 +1,12 @@
-import {ReenviarConfirmacao} from "@/components/ContaAcesso";
+import { minhasPartidas } from "@/services/servicoPartida";
+import { ReenviarConfirmacao } from "@/components/ContaAcesso";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Cabecalho } from "@/components/Cabecalho";
 import { Rodape } from "@/components/Rodape";
 import { PaginaRota } from "@/components/PaginaRota";
 import { buscarArenas, type ArenaResumo } from "@/services/servicoArena";
-import { obterToken } from "@/services/sessao";
+import { obterToken, validarSessao } from "@/services/sessao";
 import { ErroApi } from "@/api/cliente";
 
 export default async function DashboardPage({
@@ -14,7 +15,12 @@ export default async function DashboardPage({
   searchParams: Promise<{ cidade?: string | string[]; uf?: string }>;
 }) {
   const token = await obterToken();
-  if (!token) redirect("/entrar");
+  const session = await validarSessao();
+  if (!token || session === "anonymous") redirect("/entrar");
+  if (session === "unavailable") throw new Error("Não foi possível validar a sessão.");
+  const jogos = await minhasPartidas()
+    .then((items) => ({ items, error: false }))
+    .catch(() => ({ items: [], error: true }));
   const params = await searchParams;
   const filtro = params.cidade;
   const uf = params.uf ?? "";
@@ -34,7 +40,34 @@ export default async function DashboardPage({
   return (
     <div className="app-shell">
       <Cabecalho />
-      <PaginaRota title="Encontrar arenas">
+      <PaginaRota title="Meu painel">
+        <h2>Minhas partidas</h2>
+        {jogos.error ? (
+          <p role="alert">
+            Não foi possível carregar suas partidas.{" "}
+            <Link href="/minhas-partidas">Tentar novamente</Link>
+          </p>
+        ) : jogos.items.length ? (
+          <ul>
+            {jogos.items.slice(0, 5).map((m) => (
+              <li key={m.id}>
+                <Link href={`/partidas/${m.id}`}>{m.title}</Link> — {m.status}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>
+            Você ainda não tem partidas.{" "}
+            <Link href="/partidas">Encontre um jogo</Link> ou{" "}
+            <Link href="/criar-partida">organize o primeiro</Link>.
+          </p>
+        )}
+        <Link href="/minhas-partidas">Ver todas as minhas partidas</Link> ·{" "}
+        <Link href="/quadro-tatico">Meus quadros táticos</Link> ·{" "}
+        <Link href="/reservas">Minhas reservas</Link> ·{" "}
+        <Link href="/notificacoes">Notificações e convites</Link> ·{" "}
+        <Link href="/arenas">Reservar quadra</Link>
+        <h2>Encontrar arenas</h2>
         <form action="/painel" className="form-card">
           <label className="field">
             Cidade
@@ -83,7 +116,7 @@ export default async function DashboardPage({
             </article>
           ))}
         </div>
-        <ReenviarConfirmacao/>
+        <ReenviarConfirmacao />
         <Link className="text-button" href="/gestao">
           Gerenciar minhas arenas
         </Link>

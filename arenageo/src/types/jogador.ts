@@ -2,19 +2,28 @@ export interface Player {
   id: number;
   name: string;
   username: string;
-  profileImageUrl: string;
   city: string;
   state: string;
-  latitude: number;
-  longitude: number;
-  skillLevelId: number;
-  active: boolean;
+  bio: string;
+  timezone: string;
+  validUntil: string;
+  sports: { id: number; name: string; levelId: number; level: string }[];
+  slots: { day: number; start: number; end: number }[];
 }
-
-export interface PlayerSport {
-  id: number;
-  playerId: number;
-  sportId: number;
-  skillLevelId: number;
+export interface DiscoveryConfig {
+  visible: boolean;
+  name: string;
+  city: string;
+  state: string;
+  bio: string;
+  timezone: string;
+  validUntil: string;
+  revision: number;
+  slots: Player["slots"];
 }
-
+export interface PlayerPage {
+  items: Player[];
+  total: number;
+  page: number;
+  size: number;
+}

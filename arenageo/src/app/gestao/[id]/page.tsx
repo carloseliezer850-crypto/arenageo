@@ -25,6 +25,19 @@ export default async function Page({
       ) : (
         <GestaoArena id={Number(id)} initial={arena} sports={catalog.sports} />
       )}
+      <section className="form-card">
+        <h2>Agenda e reservas</h2>
+        <Link href={`/gestao/${id}/agenda`}>Abrir agenda da arena</Link>
+        <ul>
+          {arena.spaces.map((s) => (
+            <li key={s.id}>
+              <Link href={`/gestao/espacos/${s.id}`}>
+                Preço e reservas: {s.name}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
       <Galeria arena={Number(id)} />
     </main>
   );
