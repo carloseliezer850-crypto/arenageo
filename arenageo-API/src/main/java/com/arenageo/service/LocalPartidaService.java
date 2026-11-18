@@ -125,7 +125,8 @@ public class LocalPartidaService {
     var recipients =
         db.queryForList(
             "select id_organizador from tb_partida where id_partida=? union select id_usuario from"
-                + " tb_partida_participante where id_partida=? and nm_status<>'CANCELADA'",
+                + " tb_partida_participante where id_partida=? and nm_status not in"
+                + " ('CANCELADA','RECUSADA')",
             Integer.class,
             id,
             id);

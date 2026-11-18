@@ -28,9 +28,11 @@ export function AcoesPartida({
     try {
       const r = await run();
       const msg = r.success
-        ? r.data.participation === "LISTA_ESPERA"
-          ? "Você está na lista de espera. Volte para confirmar quando for sua vez."
-          : "Alteração confirmada."
+        ? r.data.participation === "SOLICITADA"
+          ? "Solicitação enviada. Aguarde a decisão do organizador."
+          : r.data.participation === "LISTA_ESPERA"
+            ? "Você está na lista de espera. Volte para confirmar quando for sua vez."
+            : "Alteração confirmada."
         : r.message;
       setMessage(msg);
       toast(msg);
@@ -50,6 +52,21 @@ export function AcoesPartida({
   return (
     <section aria-label="Ações da partida">
       <p>Sua participação: {match.participation || "Ainda não participa"}</p>
+      {match.requiresApproval && (
+        <p>
+          A entrada exige aprovação do organizador. Solicitar ou aceitar convite
+          não garante vaga.
+        </p>
+      )}
+      {match.participation === "SOLICITADA" && (
+        <p>Sua solicitação aguarda aprovação e ainda não ocupa uma vaga.</p>
+      )}
+      {match.participation === "RECUSADA" && (
+        <p>
+          O organizador recusou a solicitação. Não é possível reenviar para esta
+          partida.
+        </p>
+      )}
       {match.participation === "LISTA_ESPERA" && (
         <p>
           Posição na fila: {match.queuePosition}. A confirmação é manual, por
@@ -59,7 +76,9 @@ export function AcoesPartida({
       )}
       {open && (
         <div className="action-row">
-          {match.participation !== "CONFIRMADA" && (
+          {!["CONFIRMADA", "SOLICITADA", "RECUSADA"].includes(
+            match.participation || "",
+          ) && (
             <button
               disabled={busy}
               className="primary-button"
@@ -67,12 +86,14 @@ export function AcoesPartida({
             >
               {match.participation === "LISTA_ESPERA"
                 ? "Tentar confirmar minha vaga"
-                : match.currentPlayers >= match.maxPlayers
-                  ? "Entrar na lista de espera"
-                  : "Participar"}
+                : match.requiresApproval && !match.canManage
+                  ? "Solicitar participação"
+                  : match.currentPlayers >= match.maxPlayers
+                    ? "Entrar na lista de espera"
+                    : "Participar"}
             </button>
           )}
-          {["CONFIRMADA", "LISTA_ESPERA"].includes(
+          {["CONFIRMADA", "LISTA_ESPERA", "SOLICITADA"].includes(
             match.participation || "",
           ) && (
             <button

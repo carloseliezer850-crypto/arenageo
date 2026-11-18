@@ -89,3 +89,9 @@ Perfil público permite escolher partida própria publicada/futura e enviar conv
 - Detalhe da partida inclui `venue` (arena, espaço e status) e `canChangeVenue`. Apenas organizador recebe `venue.bookingId`; preço, cliente, motivo e pagamento não integram a projeção pública.
 - Vínculo/desvinculação e cancelamento da reserva emitem avisos internos ao organizador/participantes ativos. Cancelamento da reserva atualiza status exibido e versão da partida, sem cancelar partida/inscrições. Desvincular ou cancelar partida não cancela nem estorna reserva.
 - Não há criação automática de reserva nem cobrança por vincular. Edição de horário e aprovação de participantes ainda pendentes.
+
+### Entrada por aprovação (18/11/2026)
+
+`POST /partidas` aceita `requiresApproval` (default false, preservando clientes existentes). Quando habilitado, participar/aceitar convite registra SOLICITADA sem ocupar vaga; repetir não duplica. Organizador que joga continua ocupando uma vaga. Cancelar solicitação e reenviar cria revisão nova; RECUSADA encerra os pedidos daquela pessoa para a partida. Limite de 20 novas solicitações por hora/conta.
+
+`GET /partidas/{id}/solicitacoes` é exclusivo do organizador e retorna até 100 solicitações pendentes por ordem de entrada, apenas ID da conta, username e revisão. `PUT /partidas/{id}/solicitacoes/{user}` recebe `{approve,revision,matchVersion}`. Lock partida → conta, revisão da solicitação e versão da partida protegem decisões concorrentes/desatualizadas. Aprovação revalida agenda; confirma se houver vaga e nenhuma fila, caso contrário entra ao fim da fila. Recusa não altera vagas. Decisor/instante e notificações são gravados na mesma transação. A lista atualiza após cada decisão, permitindo avançar para pendências além do primeiro lote.

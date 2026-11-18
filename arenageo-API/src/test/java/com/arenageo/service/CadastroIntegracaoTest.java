@@ -1475,6 +1475,118 @@ class CadastroIntegracaoTest {
 
   @Autowired PartidaService partidas;
 
+  long partidaComAprovacao(int owner) {
+    var d = novaPartida(true, true);
+    return ((Number)
+            partidas
+                .criar(
+                    owner,
+                    new com.arenageo.dto.partida.PartidaRequest(
+                        d.title(),
+                        d.sportId(),
+                        d.skillLevelId(),
+                        d.description(),
+                        d.location(),
+                        d.city(),
+                        d.state(),
+                        d.dateTime(),
+                        d.timezone(),
+                        d.durationMinutes(),
+                        d.maxPlayers(),
+                        true,
+                        true,
+                        true))
+                .get("id"))
+        .longValue();
+  }
+
+  @Test
+  void solicitacaoNaoOcupaVagaERecusaNaoPodeSerContornada() {
+    int owner = jogadores.cadastrar(player()).user().id(),
+        a = jogadorConvidado("solicitante"),
+        b = jogadorConvidado("terceiro");
+    long id = partidaComAprovacao(owner);
+    assertEquals("SOLICITADA", partidas.participar(id, a, false).get("participation"));
+    partidas.participar(id, a, false);
+    assertEquals(1, partidas.detalhe(id, a).get("currentPlayers"));
+    assertEquals(1, partidas.solicitacoes(id, owner).size());
+    assertThrows(RecursoNaoEncontradoException.class, () -> partidas.solicitacoes(id, b));
+    assertThrows(RecursoNaoEncontradoException.class, () -> partidas.decidir(id, b, a, true, 1, 0));
+    partidas.participar(id, a, true);
+    partidas.participar(id, a, false);
+    assertThrows(
+        CadastroDuplicadoException.class, () -> partidas.decidir(id, owner, a, true, 1, 0));
+    partidas.decidir(id, owner, a, false, 3, 0);
+    assertEquals("RECUSADA", partidas.participar(id, a, false).get("participation"));
+    assertEquals("RECUSADA", partidas.participar(id, a, true).get("participation"));
+    assertTrue(partidas.solicitacoes(id, owner).isEmpty());
+    assertEquals(
+        owner,
+        db.queryForObject(
+            "select id_decisor from tb_partida_participante where id_partida=? and id_usuario=?",
+            Integer.class,
+            id,
+            a));
+    assertEquals(
+        1,
+        db.queryForObject(
+            "select count(*) from tb_notificacao where id_usuario=? and nm_titulo='Solicitação"
+                + " recusada'",
+            Integer.class,
+            a));
+  }
+
+  @Test
+  void aprovacoesConcorrentesRespeitamVagaFilaEAgenda() throws Exception {
+    int owner = jogadores.cadastrar(player()).user().id(),
+        a = jogadorConvidado("pedidoA"),
+        b = jogadorConvidado("pedidoB"),
+        c = jogadorConvidado("pedidoC");
+    long id = partidaComAprovacao(owner);
+    partidas.participar(id, a, false);
+    partidas.participar(id, b, false);
+    var gate = new java.util.concurrent.CountDownLatch(1);
+    try (var pool = java.util.concurrent.Executors.newFixedThreadPool(2)) {
+      var tasks =
+          java.util.stream.IntStream.of(a, b)
+              .mapToObj(
+                  u ->
+                      pool.submit(
+                          () -> {
+                            gate.await();
+                            return partidas.decidir(id, owner, u, true, 1, 0);
+                          }))
+              .toList();
+      gate.countDown();
+      for (var task : tasks) task.get(10, java.util.concurrent.TimeUnit.SECONDS);
+    }
+    assertEquals(2, partidas.detalhe(id, owner).get("currentPlayers"));
+    assertEquals(
+        1,
+        db.queryForObject(
+            "select count(*) from tb_partida_participante where id_partida=? and"
+                + " nm_status='LISTA_ESPERA'",
+            Integer.class,
+            id));
+    int confirmed = "CONFIRMADA".equals(partidas.detalhe(id, a).get("participation")) ? a : b;
+    int waiting = confirmed == a ? b : a;
+    partidas.participar(id, confirmed, true);
+    partidas.participar(id, c, false);
+    partidas.decidir(id, owner, c, true, 1, 0);
+    assertEquals("LISTA_ESPERA", partidas.detalhe(id, c).get("participation"));
+    assertEquals("CONFIRMADA", partidas.participar(id, waiting, false).get("participation"));
+    int conflict = jogadorConvidado("pedidoConflito");
+    partidas.participar(id, conflict, false);
+    long other = ((Number) partidas.criar(owner, novaPartida(true, false)).get("id")).longValue();
+    partidas.participar(other, conflict, false);
+    assertThrows(
+        CadastroDuplicadoException.class, () -> partidas.decidir(id, owner, conflict, true, 1, 0));
+    assertEquals("SOLICITADA", partidas.detalhe(id, conflict).get("participation"));
+    assertThrows(
+        CadastroDuplicadoException.class,
+        () -> partidas.decidir(id, owner, conflict, false, 1, 99));
+  }
+
   int contaParticipante(String name) {
     return db.queryForObject(
         "insert into tb_usuario(id_tipo_conta,nm_email,nm_senha_hash) select"

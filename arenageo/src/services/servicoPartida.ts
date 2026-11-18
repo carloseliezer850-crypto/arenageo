@@ -106,3 +106,24 @@ export async function vincularReservaPartida(
 ) {
   return mutation(`/partidas/${id}/reserva`, "PUT", { bookingId, version });
 }
+
+export async function solicitacoesPartida(
+  id: number,
+): Promise<{ id: number; username: string; revision: number }[]> {
+  return requisitarApi(`/partidas/${id}/solicitacoes`, {
+    headers: await headers(),
+  });
+}
+export async function decidirParticipacao(
+  id: number,
+  user: number,
+  approve: boolean,
+  revision: number,
+  matchVersion: number,
+) {
+  return mutation(`/partidas/${id}/solicitacoes/${user}`, "PUT", {
+    approve,
+    revision,
+    matchVersion,
+  });
+}

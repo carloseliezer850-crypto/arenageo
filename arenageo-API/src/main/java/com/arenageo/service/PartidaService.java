@@ -54,6 +54,7 @@ public class PartidaService {
     v.put("statusId", "PUBLICADA".equals(r.getString("nm_status")) ? 1 : 0);
     v.put("version", r.getInt("nr_versao"));
     v.put("visibility", "public");
+    v.put("requiresApproval", r.getBoolean("fl_aprovacao"));
     v.put("createdAt", r.getTimestamp("dt_criado").toInstant().toString());
     return v;
   }
@@ -166,8 +167,8 @@ public class PartidaService {
     return db.query(
         SELECT
             + " where m.id_organizador=? or exists(select 1 from tb_partida_participante v where"
-            + " v.id_partida=m.id_partida and v.id_usuario=? and v.nm_status<>'CANCELADA') order by"
-            + " m.dt_inicio desc,m.id_partida desc limit 100",
+            + " v.id_partida=m.id_partida and v.id_usuario=? and v.nm_status not in"
+            + " ('CANCELADA','RECUSADA')) order by m.dt_inicio desc,m.id_partida desc limit 100",
         (r, n) -> {
           var v = view(r, n);
           v.put("canManage", r.getInt("id_organizador") == user);
@@ -212,8 +213,8 @@ public class PartidaService {
     Long id =
         db.queryForObject(
             "insert into"
-                + " tb_partida(id_organizador,id_esporte,id_nivel_habilidade,nm_titulo,ds_descricao,nm_local,nm_cidade,nm_uf,dt_inicio,dt_fim,nm_fuso,nr_capacidade,nm_status)"
-                + " values(?,?,?,?,?,?,?,?,?,?,?,?,?) returning id_partida",
+                + " tb_partida(id_organizador,id_esporte,id_nivel_habilidade,nm_titulo,ds_descricao,nm_local,nm_cidade,nm_uf,dt_inicio,dt_fim,nm_fuso,nr_capacidade,nm_status,fl_aprovacao)"
+                + " values(?,?,?,?,?,?,?,?,?,?,?,?,?,?) returning id_partida",
             Long.class,
             user,
             d.sportId(),
@@ -227,7 +228,8 @@ public class PartidaService {
             java.sql.Timestamp.from(end),
             zone.getId(),
             d.maxPlayers(),
-            d.publish() ? "PUBLICADA" : "RASCUNHO");
+            d.publish() ? "PUBLICADA" : "RASCUNHO",
+            d.requiresApproval());
     if (d.participate()) {
       travaUsuario(user);
       if (d.publish()) checarAgenda(user, id);
@@ -281,13 +283,47 @@ public class PartidaService {
             id,
             user);
     if (sair) {
-      if (old.isEmpty() || "CANCELADA".equals(old.getFirst())) return detalhe(id, user);
+      if (old.isEmpty() || List.of("CANCELADA", "RECUSADA").contains(old.getFirst()))
+        return detalhe(id, user);
       db.update(
-          "update tb_partida_participante set nm_status='CANCELADA' where id_partida=? and"
-              + " id_usuario=?",
+          "update tb_partida_participante set nm_status='CANCELADA',nr_revisao=nr_revisao+1 where"
+              + " id_partida=? and id_usuario=?",
           id,
           user);
     } else if (old.isEmpty() || !"CONFIRMADA".equals(old.getFirst())) {
+      if (Boolean.TRUE.equals(row.get("fl_aprovacao")) && !owner(row, user)) {
+        if (!old.isEmpty() && List.of("SOLICITADA", "RECUSADA").contains(old.getFirst()))
+          return detalhe(id, user);
+        if (old.isEmpty() || "CANCELADA".equals(old.getFirst())) {
+          checarAgenda(user, id);
+          if (db.queryForObject(
+                  "select count(*) from tb_notificacao where nm_evento like ? and"
+                      + " dt_criado>current_timestamp-interval '1 hour'",
+                  Integer.class,
+                  "solicitacao:" + user + ":%")
+              >= 20)
+            throw new RegraNegocioException(
+                "REQUEST_LIMIT",
+                null,
+                "Limite de 20 solicitações por hora atingido. Tente mais tarde.");
+          int revision =
+              db.queryForObject(
+                  "insert into tb_partida_participante(id_partida,id_usuario,nm_status,nr_revisao)"
+                      + " values (?,?,'SOLICITADA',1) on conflict(id_partida,id_usuario) do update"
+                      + " set nm_status='SOLICITADA',nr_revisao=tb_partida_participante.nr_revisao+1,dt_entrada=clock_timestamp(),id_decisor=null,dt_decisao=null"
+                      + " returning nr_revisao",
+                  Integer.class,
+                  id,
+                  user);
+          avisos.emitir(
+              ((Number) row.get("id_organizador")).intValue(),
+              "solicitacao:" + user + ":" + id + ":" + revision,
+              "Nova solicitação de participação",
+              (String) row.get("nm_titulo"),
+              "/partidas/" + id);
+          return detalhe(id, user);
+        }
+      }
       checarAgenda(user, id);
       int count =
           db.queryForObject(
@@ -311,7 +347,7 @@ public class PartidaService {
       db.update(
           "insert into tb_partida_participante(id_partida,id_usuario,nm_status) values(?,?,?) on"
               + " conflict(id_partida,id_usuario) do update set"
-              + " nm_status=excluded.nm_status,dt_entrada=clock_timestamp()",
+              + " nm_status=excluded.nm_status,dt_entrada=clock_timestamp(),nr_revisao=tb_partida_participante.nr_revisao+1",
           id,
           user,
           status);
@@ -352,6 +388,86 @@ public class PartidaService {
             "/partidas/" + id);
     }
     return detalhe(id, user);
+  }
+
+  @Transactional(readOnly = true)
+  public List<Map<String, Object>> solicitacoes(long id, int user) {
+    var row = raw(id, false);
+    if (!owner(row, user))
+      throw new RecursoNaoEncontradoException("Partida não encontrada nesta conta.");
+    return db.queryForList(
+        "select v.id_usuario as id,p.nm_nome_usuario as username,v.nr_revisao as revision from"
+            + " tb_partida_participante v join tb_pessoa p using(id_usuario) where v.id_partida=?"
+            + " and v.nm_status='SOLICITADA' order by v.dt_entrada,v.id_usuario limit 100",
+        id);
+  }
+
+  @Transactional
+  public Map<String, Object> decidir(
+      long id, int organizer, int user, boolean approve, int revision, int matchVersion) {
+    var row = raw(id, true);
+    if (!owner(row, organizer))
+      throw new RecursoNaoEncontradoException("Partida não encontrada nesta conta.");
+    if (!"PUBLICADA".equals(row.get("nm_status"))
+        || !((java.sql.Timestamp) row.get("dt_inicio")).toInstant().isAfter(Instant.now()))
+      throw new CadastroDuplicadoException(
+          "MATCH_CLOSED", null, "Esta partida não aceita decisões de participação.");
+    if (((Number) row.get("nr_versao")).intValue() != matchVersion)
+      throw new CadastroDuplicadoException(
+          "VERSION_CONFLICT", null, "A partida mudou. Atualize antes de decidir.");
+    travaUsuario(user);
+    var requests =
+        db.queryForList(
+            "select nm_status,nr_revisao from tb_partida_participante where id_partida=? and"
+                + " id_usuario=?",
+            id,
+            user);
+    if (requests.isEmpty()) throw new RecursoNaoEncontradoException("Solicitação não encontrada.");
+    var request = requests.getFirst();
+    if (!"SOLICITADA".equals(request.get("nm_status"))
+        || ((Number) request.get("nr_revisao")).intValue() != revision)
+      throw new CadastroDuplicadoException(
+          "REQUEST_CHANGED", null, "A solicitação mudou ou já foi respondida. Atualize a lista.");
+    String status = "RECUSADA";
+    if (approve) {
+      checarAgenda(user, id);
+      int confirmed =
+          db.queryForObject(
+              "select count(*) from tb_partida_participante where id_partida=? and"
+                  + " nm_status='CONFIRMADA'",
+              Integer.class,
+              id);
+      boolean queue =
+          Boolean.TRUE.equals(
+              db.queryForObject(
+                  "select exists(select 1 from tb_partida_participante where id_partida=? and"
+                      + " nm_status='LISTA_ESPERA')",
+                  Boolean.class,
+                  id));
+      status =
+          confirmed < ((Number) row.get("nr_capacidade")).intValue() && !queue
+              ? "CONFIRMADA"
+              : "LISTA_ESPERA";
+    }
+    db.update(
+        "update tb_partida_participante set"
+            + " nm_status=?,nr_revisao=nr_revisao+1,id_decisor=?,dt_decisao=current_timestamp,dt_entrada=clock_timestamp()"
+            + " where id_partida=? and id_usuario=?",
+        status,
+        organizer,
+        id,
+        user);
+    avisos.emitir(
+        user,
+        "decisao:" + id + ":" + user + ":" + (revision + 1),
+        approve
+            ? (status.equals("CONFIRMADA")
+                ? "Solicitação aprovada: participação confirmada"
+                : "Solicitação aprovada: lista de espera")
+            : "Solicitação recusada",
+        (String) row.get("nm_titulo"),
+        "/partidas/" + id);
+    return detalhe(id, organizer);
   }
 
   @Transactional
@@ -396,9 +512,9 @@ public class PartidaService {
     if (action.equals("CANCELADA") || action.equals("CONCLUIDA")) {
       var recipients =
           db.queryForList(
-              "select id_usuario from tb_partida_participante where id_partida=? and"
-                  + " nm_status<>'CANCELADA' union select id_destinatario from tb_partida_convite"
-                  + " where id_partida=? and nm_status='PENDENTE'",
+              "select id_usuario from tb_partida_participante where id_partida=? and nm_status not"
+                  + " in ('CANCELADA','RECUSADA') union select id_destinatario from"
+                  + " tb_partida_convite where id_partida=? and nm_status='PENDENTE'",
               Integer.class,
               id,
               id);

@@ -105,3 +105,9 @@ Novo catálogo público paginado com consentimento, nome público separado, cida
 Vínculo partida/reserva com validação de titularidade, intervalo completo, esporte, município, estado e unicidade. Novos testes cobrem acesso de terceiro, incompatibilidade de horário/esporte, concorrência otimista, projeção pública sem dados financeiros, desvinculação independente e aviso de cancelamento mantendo inscrições. Jornada Playwright passou a reservar no mesmo horário da partida, vincular pela interface, recarregar e verificar local a confirmar após cancelar a reserva. Resultado final do CI será registrado após execução.
 
 O teste de descoberta confere 404 diretamente na API e ausência do perfil/tela de indisponibilidade no navegador. Next documenta HTTP 200 para notFound em respostas já transmitidas por streaming; o status inicial do HTML não substitui a validação da proteção dos dados.
+
+### Aprovação de participantes — 18/11/2026
+
+46 testes backend aprovados localmente: novos cenários de solicitação sem ocupação de vaga, cancelamento/reenvio com revisão, proteção contra decisão de terceiro/desatualizada, recusa sem contorno por saída, aprovações simultâneas da última vaga, respeito à fila e conflito de agenda. Playwright novo cobre criar partida com aprovação, solicitar por outra conta, aprovar pela interface e verificar confirmação após reload; aguardando CI.
+
+Corrigido o formato `validUntil` da descoberta em ambas as projeções (privada/pública) para YYYY-MM-DD. Antes, o tipo SQL date era serializado em formato incompatível com input date após salvar, bloqueando novo envio; a regressão confere data utilizável e pausa persistida, API 404 e perfil indisponível.

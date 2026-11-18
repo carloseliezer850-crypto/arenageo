@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SolicitacoesPartida } from "@/components/SolicitacoesPartida";
 import { LocalPartida } from "@/components/LocalPartida";
 import { ConvidarPartida } from "@/components/Comunicacao";
 import { notFound } from "next/navigation";
@@ -7,7 +8,11 @@ import { Cabecalho } from "@/components/Cabecalho";
 import { Rodape } from "@/components/Rodape";
 import { PaginaRota } from "@/components/PaginaRota";
 import { AcoesPartida } from "@/components/AcoesPartida";
-import { lerPartida, reservasCompativeis } from "@/services/servicoPartida";
+import {
+  lerPartida,
+  reservasCompativeis,
+  solicitacoesPartida,
+} from "@/services/servicoPartida";
 import { validarSessao } from "@/services/sessao";
 export default async function MatchDetailPage({
   params,
@@ -22,6 +27,10 @@ export default async function MatchDetailPage({
   });
   const manageVenue = Boolean(match.canChangeVenue);
   const options = manageVenue ? await reservasCompativeis(match.id) : [];
+  const requests =
+    match.canManage && match.accepting && match.requiresApproval
+      ? await solicitacoesPartida(match.id)
+      : [];
   const format = (date: string) =>
     new Date(date).toLocaleString("pt-BR", {
       timeZone: match.timezone,
@@ -82,6 +91,13 @@ export default async function MatchDetailPage({
             />
           </aside>
         </div>
+        {match.canManage && match.accepting && match.requiresApproval && (
+          <SolicitacoesPartida
+            id={match.id}
+            version={match.version}
+            requests={requests}
+          />
+        )}
         {manageVenue && <LocalPartida match={match} options={options} />}
         {match.canManage && match.accepting && (
           <ConvidarPartida id={match.id} />

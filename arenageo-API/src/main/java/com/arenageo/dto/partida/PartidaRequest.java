@@ -20,4 +20,36 @@ public record PartidaRequest(
     @Min(15) @Max(480) int durationMinutes,
     @Min(2) @Max(100) int maxPlayers,
     boolean participate,
-    boolean publish) {}
+    boolean publish,
+    boolean requiresApproval) {
+  public PartidaRequest(
+      String title,
+      Integer sportId,
+      Integer skillLevelId,
+      String description,
+      String location,
+      String city,
+      String state,
+      LocalDateTime dateTime,
+      String timezone,
+      int durationMinutes,
+      int maxPlayers,
+      boolean participate,
+      boolean publish) {
+    this(
+        title,
+        sportId,
+        skillLevelId,
+        description,
+        location,
+        city,
+        state,
+        dateTime,
+        timezone,
+        durationMinutes,
+        maxPlayers,
+        participate,
+        publish,
+        false);
+  }
+}

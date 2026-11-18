@@ -80,6 +80,20 @@ public class PartidaController {
 
   public record Vinculo(@Positive Long bookingId, @Min(0) int version) {}
 
+  @GetMapping("/{id}/solicitacoes")
+  public Object solicitacoes(Principal p, @PathVariable long id) {
+    return service.solicitacoes(id, Integer.parseInt(p.getName()));
+  }
+
+  @PutMapping("/{id}/solicitacoes/{user}")
+  public Object decidir(
+      Principal p, @PathVariable long id, @PathVariable int user, @Valid @RequestBody Decisao d) {
+    return service.decidir(
+        id, Integer.parseInt(p.getName()), user, d.approve(), d.revision(), d.matchVersion());
+  }
+
+  public record Decisao(boolean approve, @Min(0) int revision, @Min(0) int matchVersion) {}
+
   public record Participacao(boolean leave) {}
 
   public record Estado(

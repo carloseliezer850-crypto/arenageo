@@ -31,6 +31,7 @@ export function FormularioCriarPartida({
     maxPlayers: 10,
     participate: true,
     publish: true,
+    requiresApproval: false,
   });
   const [busy, setBusy] = useState(false),
     [message, setMessage] = useState("");
@@ -208,6 +209,18 @@ export function FormularioCriarPartida({
           />{" "}
           Também vou jogar (ocupa uma vaga)
         </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={Boolean(body.requiresApproval)}
+            onChange={(e) => update("requiresApproval", e.target.checked)}
+          />{" "}
+          Exigir minha aprovação para participar
+        </label>
+        <p>
+          Solicitações não ocupam vagas. Convites também respeitam a aprovação e
+          a fila.
+        </p>
         <label className="field">
           Salvar como
           <select

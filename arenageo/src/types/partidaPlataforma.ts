@@ -8,6 +8,7 @@ export interface Partida extends Match {
     status: string;
     bookingId?: number;
   } | null;
+  requiresApproval: boolean;
   organizer: string;
   location: string;
   timezone: string;
@@ -35,6 +36,7 @@ export interface NovaPartida {
   maxPlayers: number;
   participate: boolean;
   publish: boolean;
+  requiresApproval?: boolean;
 }
 export type BuscaPartidas = {
   cidade?: string;
